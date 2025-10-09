@@ -1,0 +1,60 @@
+# Dependencies
+node_modules
+/.pnp
+.pnp.js
+.npminstall.json
+
+# Testing
+/coverage
+
+# Next.js
+/.next/
+/out/
+/build
+
+# Next.js production builds
+.next
+out
+
+# Debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Local env files
+.env*.local
+.env
+*.pem
+
+# TypeScript
+*.tsbuildinfo
+
+# Build outputs
+dist
+
+# Misc
+*.log
+.DS_Store
+*.pem
+*.key
+*.crt
+
+# IDE
+.vscode
+.idea
+
+# Firebase
+.firebase
+firebase-debug.log*
+
+# Genkit
+.genkit
+
+# Local development
+*.local
+.vercel
+.now
+
+# Temporary files
+tmp
+temp
