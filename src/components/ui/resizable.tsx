@@ -29,10 +29,20 @@ export function Resizable({
     setIsResizing(true);
     startXRef.current = e.clientX;
     startWidthRef.current = width;
+    
+    // Add visual feedback when resizing starts
+    if (containerRef.current) {
+      containerRef.current.classList.add('animate-pulseGlow');
+    }
   };
 
   const stopResizing = () => {
     setIsResizing(false);
+    
+    // Remove visual feedback when resizing stops
+    if (containerRef.current) {
+      containerRef.current.classList.remove('animate-pulseGlow');
+    }
   };
 
   const resize = (e: MouseEvent) => {
@@ -62,14 +72,16 @@ export function Resizable({
   return (
     <div 
       ref={containerRef}
-      className={cn("relative group", className)}
+      className={cn("relative group transition-all duration-300", className)}
       style={{ width: `${width}%` }}
     >
       {children}
       <div
-        className="absolute top-0 right-0 h-full w-2 cursor-col-resize bg-transparent group-hover:bg-primary/20 transition-colors z-10"
+        className="absolute top-0 right-0 h-full w-2 cursor-col-resize bg-transparent group-hover:bg-primary/30 transition-all duration-300 z-10 flex items-center justify-center"
         onMouseDown={startResizing}
-      />
+      >
+        <div className="h-10 w-1 bg-primary/50 rounded-full group-hover:bg-primary group-hover:w-1.5 transition-all duration-300" />
+      </div>
     </div>
   );
 }

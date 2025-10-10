@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useMemo, useCallback } from "react";
 import Link from "next/link";
-import { PlusCircle, Star, CheckCircle, Package } from "lucide-react";
+import { PlusCircle, Star, CheckCircle, Package, Trophy, Zap, Flame, Target } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -21,6 +21,8 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { useStudySession } from "@/contexts/study-session-context";
+import { useGamification } from "@/contexts/gamification-context";
+import { GamificationDashboard } from "@/components/gamification/gamification-dashboard";
 
 // Task interface matching the data structure
 interface Task {
@@ -34,6 +36,7 @@ interface Task {
 export default function DashboardPage() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const { completedSessions } = useStudySession();
+  const { points, level, streak, badges, quests, challenges } = useGamification();
 
   // Memoize the task transformation to prevent unnecessary re-renders
   const formattedTasks = useMemo(() => {
@@ -56,10 +59,19 @@ export default function DashboardPage() {
   const pendingCount = useMemo(() => tasks.filter(t => t.status !== 'Completed').length, [tasks]);
   const sortedTasks = useMemo(() => tasks.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()), [tasks]);
 
+  // Get earned badges count
+  const earnedBadgesCount = useMemo(() => badges.filter(b => b.earned).length, [badges]);
+  
+  // Get active quests count
+  const activeQuestsCount = useMemo(() => quests.filter(q => !q.completed).length, [quests]);
+  
+  // Get completed challenges count
+  const completedChallengesCount = useMemo(() => challenges.filter(c => c.completed).length, [challenges]);
+
   return (
     <div className="grid auto-rows-max items-start gap-4 md:gap-8 lg:col-span-2">
       <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-2 xl:grid-cols-4">
-        <Card className="sm:col-span-2">
+        <Card className="sm:col-span-2 gamify-card">
           <CardHeader className="pb-3">
             <CardTitle className="font-headline">Your Study Dashboard</CardTitle>
             <CardDescription className="max-w-lg text-balance leading-relaxed">
@@ -68,44 +80,47 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent>
             <Link href="/dashboard/create-task">
-                <Button className="bg-accent hover:bg-accent/90">
+                <Button className="gamify-button bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90">
                     <PlusCircle className="mr-2 h-4 w-4" />
                     New Study Session
                 </Button>
             </Link>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="gamify-card">
           <CardHeader className="pb-2">
-            <CardDescription>Total Points</CardDescription>
+            <CardDescription>Level</CardDescription>
             <CardTitle className="text-4xl flex items-center gap-2">
-                <Star className="h-8 w-8 text-yellow-400 fill-yellow-400" />
-                {totalPoints.toLocaleString()}
+                <Trophy className="h-8 w-8 text-yellow-500 fill-yellow-500" />
+                {level}
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-xs text-muted-foreground">
-              Keep up the great work!
+              {points} total points
             </div>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="gamify-card">
           <CardHeader className="pb-2">
-            <CardDescription>Tasks Completed</CardDescription>
+            <CardDescription>Streak</CardDescription>
             <CardTitle className="text-4xl flex items-center gap-2">
-                <CheckCircle className="h-8 w-8 text-green-500" />
-                {completedCount}
+                <Flame className="h-8 w-8 text-red-500" />
+                {streak}
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-xs text-muted-foreground">
-              {pendingCount} tasks pending
+              Keep it up!
             </div>
           </CardContent>
         </Card>
       </div>
 
-      <Card>
+      {/* Gamification Dashboard */}
+      <GamificationDashboard />
+
+      <Card className="gamify-card">
         <CardHeader className="px-7">
           <CardTitle>Your Tasks</CardTitle>
           <CardDescription>
@@ -125,7 +140,7 @@ export default function DashboardPage() {
             <TableBody>
               {sortedTasks.length > 0 ? (
                 sortedTasks.map((task) => (
-                  <TableRow key={task.id}>
+                  <TableRow key={task.id} className="gamify-card">
                     <TableCell>
                       <div className="font-medium">{task.title}</div>
                       <div className="hidden text-sm text-muted-foreground md:inline">
@@ -148,7 +163,7 @@ export default function DashboardPage() {
                         <Package className="h-8 w-8 text-muted-foreground" />
                         <p className="text-muted-foreground">No tasks completed yet.</p>
                         <Link href="/dashboard/create-task">
-                            <Button variant="secondary" size="sm">Start a new session</Button>
+                            <Button variant="secondary" size="sm" className="gamify-button">Start a new session</Button>
                         </Link>
                     </div>
                   </TableCell>

@@ -23,13 +23,15 @@ import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Logo } from '../icons';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
+import { useAuth } from '@/contexts/auth-context';
 
 export function Header() {
   const router = useRouter();
+  const { user, logout } = useAuth();
   const userAvatar = PlaceHolderImages.find(img => img.id === 'user-avatar');
 
   const handleLogout = () => {
-    // In a real app, you'd clear session/token here
+    logout();
     router.push('/');
   };
 
@@ -105,7 +107,9 @@ export function Header() {
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
-          <DropdownMenuLabel>My Account</DropdownMenuLabel>
+          <DropdownMenuLabel>
+            {user?.username || 'My Account'}
+          </DropdownMenuLabel>
           <DropdownMenuSeparator />
           <DropdownMenuItem>Settings</DropdownMenuItem>
           <DropdownMenuItem>Support</DropdownMenuItem>

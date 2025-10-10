@@ -2,6 +2,8 @@
 
 import { createContext, useContext, useState, ReactNode, useCallback, useEffect, useMemo } from 'react';
 import type { GenerateQuizQuestionsOutput } from '@/ai/flows/generate-quiz-questions-from-pdf';
+import { useGamification } from '@/contexts/gamification-context';
+import { useAuth } from '@/contexts/auth-context';
 
 type TaskInfo = {
     name: string;
@@ -52,6 +54,7 @@ interface StudySessionContextType {
 const StudySessionContext = createContext<StudySessionContextType | undefined>(undefined);
 
 export function StudySessionProvider({ children }: { children: ReactNode }) {
+    const { user } = useAuth();
     const [taskInfo, setTaskInfo] = useState<TaskInfo | null>(null);
     const [quizQuestions, setQuizQuestions] = useState<GenerateQuizQuestionsOutput['questions'] | null>(null);
     const [quizAnswers, setQuizAnswers] = useState<QuizAnswer[]>([]);
@@ -60,6 +63,9 @@ export function StudySessionProvider({ children }: { children: ReactNode }) {
     const [penaltyPoints, setPenaltyPoints] = useState(0);
     const [completedSessions, setCompletedSessions] = useState<CompletedSession[]>([]);
     const [prefetchedQuizQuestions, setPrefetchedQuizQuestions] = useState<GenerateQuizQuestionsOutput['questions'] | null>(null);
+    
+    // Integrate with gamification system
+    const { addPoints, incrementStreak, checkQuestProgress } = useGamification();
 
     // Load completed sessions from localStorage on initial client-side render
     useEffect(() => {
@@ -101,13 +107,19 @@ export function StudySessionProvider({ children }: { children: ReactNode }) {
     
     const useCoin = useCallback(() => {
         setCoinsUsed(prev => prev + 1);
-    }, []);
+        // Gamification: Using coins affects points
+        addPoints(-5); // Small penalty for using coins
+    }, [addPoints]);
     
     const addPenalty = useCallback((points: number) => {
         setPenaltyPoints(prev => prev + points);
-    }, []);
+        // Gamification: Penalties affect points
+        addPoints(-points);
+    }, [addPoints]);
 
-    const addCompletedSession = useCallback((session: CompletedSession) => {
+    const addCompletedSession = useCallback(async (session: CompletedSession) => {
+        if (!user) return;
+
         setCompletedSessions(prev => {
             // Avoid adding duplicates
             if (prev.find(s => s.id === session.id)) {
@@ -115,7 +127,48 @@ export function StudySessionProvider({ children }: { children: ReactNode }) {
             }
             return [...prev, session]
         });
-    }, []);
+        
+        // Save to database
+        try {
+            const token = localStorage.getItem('auth-token');
+            if (token) {
+                const response = await fetch('/api/user/study-session', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`,
+                    },
+                    body: JSON.stringify({
+                        id: session.id,
+                        taskName: session.taskName,
+                        duration: Math.floor(studyDuration / 60), // Convert to minutes
+                        score: 85, // Default score, should be calculated from quiz
+                        points: session.points,
+                        quizAnswers: quizAnswers.map(qa => ({
+                            ...qa,
+                            correct: true // This should be calculated based on correct answers
+                        }))
+                    }),
+                });
+
+                if (!response.ok) {
+                    console.error('Failed to save study session');
+                }
+            }
+        } catch (error) {
+            console.error('Error saving study session:', error);
+        }
+        
+        // Gamification: Add points for completing session
+        addPoints(session.points);
+        
+        // Update quest progress
+        checkQuestProgress('quiz-5', 1);
+        checkQuestProgress('study-60', session.points / 4); // Assuming 4 points per minute
+        
+        // Increment streak
+        incrementStreak();
+    }, [user, studyDuration, quizAnswers, addPoints, checkQuestProgress, incrementStreak]);
 
     const resetSession = useCallback(() => {
         setTaskInfo(null);

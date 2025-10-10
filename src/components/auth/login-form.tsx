@@ -25,6 +25,7 @@ import { Input } from '@/components/ui/input';
 import { Logo } from '@/components/icons';
 import { useState } from 'react';
 import { Loader2 } from 'lucide-react';
+import { useAuth } from '@/contexts/auth-context';
 
 const formSchema = z.object({
   email: z.string().email({ message: 'Please enter a valid email.' }),
@@ -33,6 +34,7 @@ const formSchema = z.object({
 
 export function LoginForm() {
   const router = useRouter();
+  const { login, error } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -43,13 +45,13 @@ export function LoginForm() {
     },
   });
 
-  function onSubmit(values: z.infer<typeof formSchema>) {
-    console.log(values);
+  async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true);
-    // Simulate API call
-    setTimeout(() => {
+    const success = await login(values.email, values.password);
+    if (success) {
       router.push('/dashboard');
-    }, 1000);
+    }
+    setIsLoading(false);
   }
 
   return (
@@ -90,6 +92,11 @@ export function LoginForm() {
                 </FormItem>
               )}
             />
+            {error && (
+              <div className="text-sm text-red-600 text-center">
+                {error}
+              </div>
+            )}
             <Button type="submit" className="w-full bg-accent hover:bg-accent/90" disabled={isLoading}>
               {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Sign In

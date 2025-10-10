@@ -1,6 +1,8 @@
 import type { Metadata } from 'next';
 import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
+import { AuthProvider } from '@/contexts/auth-context';
+import { GamificationProvider } from '@/contexts/gamification-context';
 
 export const metadata: Metadata = {
   title: 'StudyMaster AI',
@@ -23,8 +25,12 @@ export default function RootLayout({
         />
       </head>
       <body className="font-body antialiased">
-        {children}
-        <Toaster />
+        <AuthProvider>
+          <GamificationProvider>
+            {children}
+            <Toaster />
+          </GamificationProvider>
+        </AuthProvider>
       </body>
     </html>
   );

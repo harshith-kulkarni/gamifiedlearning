@@ -6,9 +6,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Loader2, Send, MessageSquare, AlertTriangle } from 'lucide-react';
+import { Loader2, Send, MessageSquare, AlertTriangle, Sparkles, Zap, Trophy, Star, Lightbulb, Coins } from 'lucide-react';
 import { aiChatbotAssistanceStream } from '@/ai/flows/ai-chatbot-assistance';
 import { Logo } from '../icons';
+import { useGamification } from '@/contexts/gamification-context';
 
 interface AIChatProps {
     pdfDataUri: string;
@@ -21,14 +22,17 @@ type Message = {
 
 // Memoize the AIChat component to prevent unnecessary re-renders
 export const AIChat = memo(function AIChat({ pdfDataUri }: AIChatProps) {
+    const { points, addPoints, checkQuestProgress } = useGamification();
     const [messages, setMessages] = useState<Message[]>([
-        { role: 'bot', content: "I am your AI study master. Ask me anything about the document!" }
+        { role: 'bot', content: "Hello! I'm your AI Study Master 🧠✨ Ask me anything about the document!" }
     ]);
     const [input, setInput] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [streamingMessage, setStreamingMessage] = useState('');
+    const [streak, setStreak] = useState(0);
     const scrollViewportRef = useRef<HTMLDivElement>(null);
     const abortControllerRef = useRef<AbortController | null>(null);
+    const questionCountRef = useRef(0);
 
     // Scroll to bottom effect
     useEffect(() => {
@@ -76,17 +80,33 @@ export const AIChat = memo(function AIChat({ pdfDataUri }: AIChatProps) {
                 const botMessage: Message = { role: 'bot', content: accumulatedResponse };
                 setMessages(prev => [...prev, botMessage]);
                 setStreamingMessage('');
+                
+                // Gamification: Add points and update quest progress
+                const pointsEarned = 5 + Math.floor(accumulatedResponse.length / 100); // Bonus points for longer responses
+                addPoints(pointsEarned);
+                questionCountRef.current += 1;
+                checkQuestProgress('ai-chat-10', 1);
+                
+                // Update streak
+                setStreak(prev => prev + 1);
+                
+                // Show coin collection animation
+                const coinElement = document.createElement('div');
+                coinElement.innerHTML = `<Coins class="h-6 w-6 text-yellow-500 fill-yellow-500 animate-coinCollect" />`;
+                coinElement.className = 'absolute top-0 right-0';
+                document.querySelector('.chat-header')?.appendChild(coinElement);
+                setTimeout(() => coinElement.remove(), 1000);
             }
         } catch (error) {
             console.error(error);
-            const errorMessage: Message = { role: 'error', content: "Sorry, I encountered an error. Please try again." };
+            const errorMessage: Message = { role: 'error', content: "Sorry, I encountered an error. Please try again. 😔" };
             setMessages(prev => [...prev, errorMessage]);
             setStreamingMessage('');
         } finally {
             setIsLoading(false);
             abortControllerRef.current = null;
         }
-    }, [input, isLoading, pdfDataUri]);
+    }, [input, isLoading, pdfDataUri, addPoints, checkQuestProgress]);
     
     // Handle cancel streaming
     const handleCancelStreaming = useCallback(() => {
@@ -99,48 +119,68 @@ export const AIChat = memo(function AIChat({ pdfDataUri }: AIChatProps) {
     }, []);
 
     return (
-        <Card className="flex flex-col h-full transition-all duration-300 hover:shadow-md">
-            <CardHeader className="flex flex-row items-center">
+        <Card className="flex flex-col h-full transition-all duration-300 hover:shadow-xl gamify-card rounded-xl overflow-hidden border-2 border-primary/20">
+            <CardHeader className="flex flex-row items-center justify-between bg-gradient-to-r from-primary/10 to-accent/10 pb-3">
                 <div className="flex items-center gap-2">
-                    <MessageSquare className="h-5 w-5 text-primary animate-pulse" />
-                    <CardTitle className="font-headline">AI Study Master</CardTitle>
+                    <div className="relative">
+                        <MessageSquare className="h-6 w-6 text-primary animate-pulse" />
+                        <Sparkles className="h-3 w-3 text-yellow-500 absolute -top-1 -right-1 animate-pulse" />
+                    </div>
+                    <CardTitle className="font-headline text-xl">AI Study Master</CardTitle>
+                </div>
+                <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-1 bg-yellow-100 dark:bg-yellow-900/30 px-2 py-1 rounded-full">
+                        <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />
+                        <span className="text-sm font-bold">{points}</span>
+                    </div>
+                    <div className="flex items-center gap-1 bg-green-100 dark:bg-green-900/30 px-2 py-1 rounded-full">
+                        <Zap className="h-4 w-4 text-green-500" />
+                        <span className="text-sm font-bold">{streak}</span>
+                    </div>
                 </div>
             </CardHeader>
-            <CardContent className="flex flex-col h-full p-0">
-                <ScrollArea className="flex-grow p-4" viewportRef={scrollViewportRef}>
-                    <div className="space-y-4 pr-4">
+            <CardContent className="flex flex-col h-full p-0 bg-gradient-to-b from-background to-muted/20">
+                <ScrollArea className="flex-grow p-4 chat-scroll-area" viewportRef={scrollViewportRef}>
+                    <div className="space-y-4 pr-2">
                         {messages.map((msg, index) => (
                             <div 
                                 key={index} 
-                                className={`flex items-end gap-2 ${msg.role === 'user' ? 'justify-end' : 'justify-start'} animate-fadeIn`}
+                                className={`flex items-end gap-2 ${msg.role === 'user' ? 'justify-end' : 'justify-start'} animate-popIn`}
                             >
                                 {msg.role !== 'user' && (
-                                    <Avatar className="h-8 w-8 border animate-bounceIn flex-shrink-0">
-                                        <AvatarFallback className={msg.role === 'error' ? 'bg-destructive' : 'bg-primary'}>
-                                            {msg.role === 'error' ? <AlertTriangle className="h-4 w-4 text-destructive-foreground"/> : <Logo className="h-4 w-4 text-primary-foreground"/>}
+                                    <Avatar className="h-10 w-10 border-2 border-primary animate-bounceIn flex-shrink-0">
+                                        <AvatarFallback className={`${msg.role === 'error' ? 'bg-destructive' : 'bg-primary'} text-white`}>
+                                            {msg.role === 'error' ? <AlertTriangle className="h-5 w-5 text-destructive-foreground"/> : <Logo className="h-5 w-5 text-primary-foreground"/>}
                                         </AvatarFallback>
                                     </Avatar>
                                 )}
-                                <div className={`max-w-[80%] rounded-lg p-3 text-sm transition-all duration-300 ${
+                                <div className={`max-w-[85%] rounded-2xl p-4 text-sm transition-all duration-300 shadow-md ${
                                     msg.role === 'user' 
                                         ? 'bg-primary text-primary-foreground rounded-br-none animate-slideInRight' 
                                         : msg.role === 'error' 
-                                            ? 'bg-destructive/10 text-destructive rounded-bl-none animate-shake' 
-                                            : 'bg-muted rounded-bl-none animate-slideInLeft'
+                                            ? 'bg-destructive/10 text-destructive rounded-bl-none animate-shake border border-destructive/20' 
+                                            : 'bg-muted rounded-bl-none animate-slideInLeft border border-muted-foreground/10'
                                 }`}>
                                     {msg.content}
                                 </div>
+                                {msg.role === 'user' && (
+                                    <Avatar className="h-10 w-10 border-2 border-accent animate-bounceIn flex-shrink-0">
+                                        <AvatarFallback className="bg-accent text-accent-foreground">
+                                            👤
+                                        </AvatarFallback>
+                                    </Avatar>
+                                )}
                             </div>
                         ))}
                         {streamingMessage && (
-                            <div className="flex items-end gap-2 justify-start animate-fadeIn">
-                                <Avatar className="h-8 w-8 border animate-bounce flex-shrink-0">
-                                    <AvatarFallback className="bg-primary">
-                                        <Logo className="h-4 w-4 text-primary-foreground"/>
+                            <div className="flex items-end gap-2 justify-start animate-popIn">
+                                <Avatar className="h-10 w-10 border-2 border-primary animate-bounce flex-shrink-0">
+                                    <AvatarFallback className="bg-primary text-white">
+                                        <Logo className="h-5 w-5 text-primary-foreground"/>
                                     </AvatarFallback>
                                 </Avatar>
-                                <div className="bg-muted rounded-lg p-3 rounded-bl-none animate-pulse">
-                                    <div className="flex items-center gap-1">
+                                <div className="bg-muted rounded-2xl p-4 rounded-bl-none animate-pulse shadow-md border border-muted-foreground/10">
+                                    <div className="flex items-center gap-2">
                                         <span>{streamingMessage}</span>
                                         <Loader2 className="h-4 w-4 animate-spin text-primary" />
                                     </div>
@@ -148,33 +188,47 @@ export const AIChat = memo(function AIChat({ pdfDataUri }: AIChatProps) {
                             </div>
                         )}
                         {isLoading && !streamingMessage && (
-                            <div className="flex items-end gap-2 justify-start animate-fadeIn">
-                                <Avatar className="h-8 w-8 border animate-bounce flex-shrink-0">
-                                    <AvatarFallback className="bg-primary">
-                                        <Logo className="h-4 w-4 text-primary-foreground"/>
+                            <div className="flex items-end gap-2 justify-start animate-popIn">
+                                <Avatar className="h-10 w-10 border-2 border-primary animate-bounce flex-shrink-0">
+                                    <AvatarFallback className="bg-primary text-white">
+                                        <Logo className="h-5 w-5 text-primary-foreground"/>
                                     </AvatarFallback>
                                 </Avatar>
-                                <div className="bg-muted rounded-lg p-3 rounded-bl-none">
-                                    <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                                <div className="bg-muted rounded-2xl p-4 rounded-bl-none shadow-md border border-muted-foreground/10">
+                                    <div className="flex items-center gap-2">
+                                        <div className="flex space-x-1">
+                                            <div className="h-2 w-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+                                            <div className="h-2 w-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+                                            <div className="h-2 w-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+                                        </div>
+                                        <span className="text-muted-foreground">Thinking...</span>
+                                    </div>
                                 </div>
                             </div>
                         )}
                     </div>
                 </ScrollArea>
-                <div className="p-4 border-t bg-background/50 mt-auto">
+                <div className="p-4 border-t bg-background/50 backdrop-blur-sm mt-auto">
                     <form onSubmit={handleSendMessage} className="flex gap-2">
-                        <Input 
-                            value={input} 
-                            onChange={(e) => setInput(e.target.value)} 
-                            placeholder="Ask a question..." 
-                            disabled={isLoading}
-                            onKeyDown={(e) => {
-                                if (e.key === 'Enter' && !e.shiftKey) {
-                                    handleSendMessage(e);
-                                }
-                            }}
-                            className="transition-all duration-300 focus:ring-2 focus:ring-primary"
-                        />
+                        <div className="relative flex-1">
+                            <Input 
+                                value={input} 
+                                onChange={(e) => setInput(e.target.value)} 
+                                placeholder="Ask a question about the document..." 
+                                disabled={isLoading}
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter' && !e.shiftKey) {
+                                        handleSendMessage(e);
+                                    }
+                                }}
+                                className="pr-10 transition-all duration-300 focus:ring-2 focus:ring-primary pl-4 py-5 rounded-full border-2 border-primary/20 focus:border-primary"
+                            />
+                            {input.trim() && (
+                                <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                                    <Lightbulb className="h-4 w-4 text-yellow-500 animate-pulse" />
+                                </div>
+                            )}
+                        </div>
                         <div className="flex gap-2">
                             {isLoading && (
                                 <Button 
@@ -182,21 +236,26 @@ export const AIChat = memo(function AIChat({ pdfDataUri }: AIChatProps) {
                                     variant="outline" 
                                     size="icon" 
                                     onClick={handleCancelStreaming}
-                                    className="transition-all duration-300 hover:scale-105"
+                                    className="gamify-button h-12 w-12 rounded-full border-2 border-destructive/50 hover:border-destructive transition-all duration-300"
                                 >
-                                    <span className="text-xs">✕</span>
+                                    <span className="text-lg">✕</span>
                                 </Button>
                             )}
                             <Button 
                                 type="submit" 
                                 size="icon" 
                                 disabled={isLoading || !input.trim()} 
-                                className="bg-accent hover:bg-accent/90 transition-all duration-300 hover:scale-105"
+                                className="gamify-button h-12 w-12 rounded-full bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90 transition-all duration-300 shadow-lg hover:shadow-xl"
                             >
-                                <Send className="h-4 w-4" />
+                                <Send className="h-5 w-5" />
                             </Button>
                         </div>
                     </form>
+                    <div className="mt-2 text-center">
+                        <p className="text-xs text-muted-foreground animate-fadeIn">
+                            💡 Tip: Ask specific questions about the document content for better results!
+                        </p>
+                    </div>
                 </div>
             </CardContent>
         </Card>

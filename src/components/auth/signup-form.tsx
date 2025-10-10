@@ -25,6 +25,7 @@ import { Input } from '@/components/ui/input';
 import { Logo } from '@/components/icons';
 import { useState } from 'react';
 import { Loader2 } from 'lucide-react';
+import { useAuth } from '@/contexts/auth-context';
 
 const formSchema = z.object({
   username: z.string().min(3, { message: 'Username must be at least 3 characters.' }),
@@ -34,6 +35,7 @@ const formSchema = z.object({
 
 export function SignupForm() {
   const router = useRouter();
+  const { signup, error } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -45,13 +47,13 @@ export function SignupForm() {
     },
   });
 
-  function onSubmit(values: z.infer<typeof formSchema>) {
-    console.log(values);
+  async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true);
-    // Simulate API call
-    setTimeout(() => {
+    const success = await signup(values.username, values.email, values.password);
+    if (success) {
       router.push('/dashboard');
-    }, 1000);
+    }
+    setIsLoading(false);
   }
 
   return (
@@ -105,6 +107,11 @@ export function SignupForm() {
                 </FormItem>
               )}
             />
+            {error && (
+              <div className="text-sm text-red-600 text-center">
+                {error}
+              </div>
+            )}
             <Button type="submit" className="w-full bg-accent hover:bg-accent/90" disabled={isLoading}>
               {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Create Account
