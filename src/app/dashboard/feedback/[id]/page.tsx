@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { useStudySession } from '@/contexts/study-session-context';
 import { Button } from '@/components/ui/button';
@@ -17,36 +17,43 @@ export default function FeedbackPage() {
     const [isClient, setIsClient] = useState(false);
     const [analysis, setAnalysis] = useState<AnalyzeQuizPerformanceOutput | null>(null);
     const [isAnalyzing, setIsAnalyzing] = useState(true);
+    const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
         setIsClient(true);
     }, []);
 
+    // Memoize the analysis function
+    const performAnalysis = useCallback(async () => {
+        if (quizQuestions && taskInfo) {
+            setIsAnalyzing(true);
+            setError(null);
+            try {
+                const result = await analyzeQuizPerformance({
+                    pdfDataUri: taskInfo.dataUri,
+                    questions: quizQuestions,
+                    userAnswers: quizAnswers,
+                });
+                setAnalysis(result);
+            } catch (error) {
+                console.error("Failed to analyze performance:", error);
+                setError("Could not analyze performance. Please try again.");
+                // Set fallback data so the page is still useful
+                setAnalysis({
+                    strengths: ["Could not analyze strengths. Please review your answers manually."],
+                    weaknesses: ["Could not analyze weaknesses. Please review your answers manually."]
+                });
+            } finally {
+                setIsAnalyzing(false);
+            }
+        }
+    }, [quizQuestions, quizAnswers, taskInfo]);
+
     useEffect(() => {
-        if (isClient && quizQuestions && taskInfo) {
-            const performAnalysis = async () => {
-                setIsAnalyzing(true);
-                try {
-                    const result = await analyzeQuizPerformance({
-                        pdfDataUri: taskInfo.dataUri,
-                        questions: quizQuestions,
-                        userAnswers: quizAnswers,
-                    });
-                    setAnalysis(result);
-                } catch (error) {
-                    console.error("Failed to analyze performance:", error);
-                    // Set fallback data so the page is still useful
-                    setAnalysis({
-                        strengths: ["Could not analyze strengths. Please review your answers manually."],
-                        weaknesses: ["Could not analyze weaknesses. Please review your answers manually."]
-                    });
-                } finally {
-                    setIsAnalyzing(false);
-                }
-            };
+        if (isClient) {
             performAnalysis();
         }
-    }, [isClient, quizQuestions, quizAnswers, taskInfo]);
+    }, [isClient, performAnalysis]);
 
     const score = useMemo(() => {
         if (!quizQuestions) return 0;
@@ -66,7 +73,7 @@ export default function FeedbackPage() {
         return studyPoints + quizPoints - coinPenalty - penaltyPoints;
     }, [studyDuration, score, coinsUsed, penaltyPoints]);
 
-    useEffect(() => {
+    const saveSession = useCallback(() => {
         if(taskInfo && params.id) {
             addCompletedSession({
                 id: params.id as string,
@@ -74,25 +81,53 @@ export default function FeedbackPage() {
                 points: points
             })
         }
-    }, [taskInfo, params.id, points, addCompletedSession])
+    }, [taskInfo, params.id, points, addCompletedSession]);
 
-    const formatDuration = (seconds: number) => {
+    useEffect(() => {
+        saveSession();
+    }, [saveSession]);
+
+    const formatDuration = useCallback((seconds: number) => {
         const h = Math.floor(seconds / 3600);
         const m = Math.floor((seconds % 3600) / 60);
         const s = seconds % 60;
         return `${h > 0 ? `${h}h ` : ''}${m > 0 ? `${m}m ` : ''}${s}s`;
-    };
+    }, []);
 
-    const handleDone = () => {
+    const handleDone = useCallback(() => {
         resetSession();
         router.push('/dashboard');
-    };
+    }, [resetSession, router]);
+
+    const retryAnalysis = useCallback(() => {
+        performAnalysis();
+    }, [performAnalysis]);
 
     if (!isClient || !quizQuestions) {
         return (
             <div className="flex flex-col h-[80vh] items-center justify-center gap-4">
                 <Loader2 className="h-12 w-12 animate-spin text-primary" />
                 <p className="text-muted-foreground animate-pulse">Calculating your results...</p>
+            </div>
+        );
+    }
+
+    if (error) {
+        return (
+            <div className="container mx-auto max-w-4xl py-8">
+                <Card className="shadow-lg">
+                    <CardHeader className="text-center">
+                        <CardTitle className="text-3xl font-headline">Analysis Error</CardTitle>
+                        <CardDescription>There was an issue analyzing your performance</CardDescription>
+                    </CardHeader>
+                    <CardContent className="text-center space-y-4">
+                        <p className="text-muted-foreground">{error}</p>
+                        <div className="flex justify-center gap-2">
+                            <Button onClick={retryAnalysis}>Retry</Button>
+                            <Button onClick={handleDone} variant="outline">Go to Dashboard</Button>
+                        </div>
+                    </CardContent>
+                </Card>
             </div>
         );
     }
@@ -108,15 +143,33 @@ export default function FeedbackPage() {
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
                         <Card>
                             <CardHeader><CardTitle className="flex items-center justify-center gap-2 text-base font-medium"><Clock className="h-4 w-4"/>Study Time</CardTitle></CardHeader>
-                            <CardContent><p className="text-3xl font-bold">{formatDuration(studyDuration)}</p></CardContent>
+                            <CardContent>
+                                {isAnalyzing ? (
+                                    <Skeleton className="h-8 w-24 mx-auto" />
+                                ) : (
+                                    <p className="text-3xl font-bold">{formatDuration(studyDuration)}</p>
+                                )}
+                            </CardContent>
                         </Card>
-                         <Card>
+                        <Card>
                             <CardHeader><CardTitle className="flex items-center justify-center gap-2 text-base font-medium"><CheckCircle className="h-4 w-4"/>Quiz Score</CardTitle></CardHeader>
-                            <CardContent><p className="text-3xl font-bold">{score} / {quizQuestions.length}</p></CardContent>
+                            <CardContent>
+                                {isAnalyzing ? (
+                                    <Skeleton className="h-8 w-24 mx-auto" />
+                                ) : (
+                                    <p className="text-3xl font-bold">{score} / {quizQuestions.length}</p>
+                                )}
+                            </CardContent>
                         </Card>
-                         <Card>
+                        <Card>
                             <CardHeader><CardTitle className="flex items-center justify-center gap-2 text-base font-medium"><Star className="h-4 w-4"/>Points Earned</CardTitle></CardHeader>
-                            <CardContent><p className="text-3xl font-bold text-accent">{points > 0 ? `+${points}`: points}</p></CardContent>
+                            <CardContent>
+                                {isAnalyzing ? (
+                                    <Skeleton className="h-8 w-24 mx-auto" />
+                                ) : (
+                                    <p className="text-3xl font-bold text-accent">{points > 0 ? `+${points}`: points}</p>
+                                )}
+                            </CardContent>
                         </Card>
                     </div>
 
@@ -137,9 +190,9 @@ export default function FeedbackPage() {
                                 </ul>
                             )}
                         </div>
-                         <div className="space-y-4">
+                        <div className="space-y-4">
                             <h3 className="text-xl font-semibold flex items-center gap-2"><Target className="h-5 w-5 text-destructive"/>Areas for Improvement</h3>
-                             {isAnalyzing ? (
+                            {isAnalyzing ? (
                                 <div className="space-y-2">
                                     <Skeleton className="h-4 w-4/5" />
                                     <Skeleton className="h-4 w-3/5" />
@@ -153,9 +206,9 @@ export default function FeedbackPage() {
                         </div>
                     </div>
 
-                     <div className="text-center pt-6">
+                    <div className="text-center pt-6">
                         <Button onClick={handleDone} size="lg" className="bg-accent hover:bg-accent/90">
-                           Back to Dashboard <ArrowRight className="ml-2 h-4 w-4" />
+                            Back to Dashboard <ArrowRight className="ml-2 h-4 w-4" />
                         </Button>
                     </div>
                 </CardContent>

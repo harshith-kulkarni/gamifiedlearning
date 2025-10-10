@@ -45,8 +45,36 @@ const AnalyzeQuizPerformanceOutputSchema = z.object({
 });
 export type AnalyzeQuizPerformanceOutput = z.infer<typeof AnalyzeQuizPerformanceOutputSchema>;
 
+// Simple in-memory cache for AI responses
+const performanceCache = new Map<string, {data: AnalyzeQuizPerformanceOutput, timestamp: number}>();
+
 export async function analyzeQuizPerformance(input: AnalyzeQuizPerformanceInput): Promise<AnalyzeQuizPerformanceOutput> {
-  return analyzeQuizPerformanceFlow(input);
+  // Create a cache key based on the input
+  const cacheKey = `${input.pdfDataUri}-${JSON.stringify(input.questions)}-${JSON.stringify(input.userAnswers)}`;
+  
+  // Check cache first
+  if (performanceCache.has(cacheKey)) {
+    const cached = performanceCache.get(cacheKey);
+    if (cached && Date.now() - cached.timestamp < 5 * 60 * 1000) { // 5 minutes TTL
+      console.log('Returning cached performance analysis');
+      return cached.data;
+    } else {
+      // Expired, remove from cache
+      performanceCache.delete(cacheKey);
+    }
+  }
+
+  // Generate new analysis
+  console.log('Generating new performance analysis');
+  const result = await analyzeQuizPerformanceFlow(input);
+  
+  // Cache the result
+  performanceCache.set(cacheKey, {
+    data: result,
+    timestamp: Date.now()
+  });
+  
+  return result;
 }
 
 const prompt = ai.definePrompt({

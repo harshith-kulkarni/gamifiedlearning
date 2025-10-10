@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import Link from "next/link";
 import { PlusCircle, Star, CheckCircle, Package } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -35,21 +35,26 @@ export default function DashboardPage() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const { completedSessions } = useStudySession();
 
-  useEffect(() => {
-    // This effect will run on the client side
-    // It will load completed sessions from the context
-    const formattedTasks: Task[] = completedSessions.map(session => ({
+  // Memoize the task transformation to prevent unnecessary re-renders
+  const formattedTasks = useMemo(() => {
+    return completedSessions.map(session => ({
       id: session.id,
       title: session.taskName,
-      status: 'Completed',
+      status: 'Completed' as const,
       date: new Date().toISOString().split('T')[0], // Use current date for simplicity
       points: session.points,
     }));
-    setTasks(formattedTasks);
   }, [completedSessions]);
+
+  useEffect(() => {
+    setTasks(formattedTasks);
+  }, [formattedTasks]);
   
-  const totalPoints = tasks.reduce((acc, task) => acc + task.points, 0);
-  const sortedTasks = tasks.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  // Memoize calculations
+  const totalPoints = useMemo(() => tasks.reduce((acc, task) => acc + task.points, 0), [tasks]);
+  const completedCount = useMemo(() => tasks.filter(t => t.status === 'Completed').length, [tasks]);
+  const pendingCount = useMemo(() => tasks.filter(t => t.status !== 'Completed').length, [tasks]);
+  const sortedTasks = useMemo(() => tasks.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()), [tasks]);
 
   return (
     <div className="grid auto-rows-max items-start gap-4 md:gap-8 lg:col-span-2">
@@ -89,12 +94,12 @@ export default function DashboardPage() {
             <CardDescription>Tasks Completed</CardDescription>
             <CardTitle className="text-4xl flex items-center gap-2">
                 <CheckCircle className="h-8 w-8 text-green-500" />
-                {tasks.filter(t => t.status === 'Completed').length}
+                {completedCount}
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-xs text-muted-foreground">
-              {tasks.filter(t => t.status !== 'Completed').length} tasks pending
+              {pendingCount} tasks pending
             </div>
           </CardContent>
         </Card>

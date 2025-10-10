@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useState, ReactNode, useCallback, useEffect } from 'react';
+import { createContext, useContext, useState, ReactNode, useCallback, useEffect, useMemo } from 'react';
 import type { GenerateQuizQuestionsOutput } from '@/ai/flows/generate-quiz-questions-from-pdf';
 
 type TaskInfo = {
@@ -43,6 +43,10 @@ interface StudySessionContextType {
     addCompletedSession: (session: CompletedSession) => void;
 
     resetSession: () => void;
+    
+    // Prefetched data
+    prefetchedQuizQuestions: GenerateQuizQuestionsOutput['questions'] | null;
+    setPrefetchedQuizQuestions: (questions: GenerateQuizQuestionsOutput['questions'] | null) => void;
 }
 
 const StudySessionContext = createContext<StudySessionContextType | undefined>(undefined);
@@ -55,6 +59,7 @@ export function StudySessionProvider({ children }: { children: ReactNode }) {
     const [studyDuration, setStudyDuration] = useState(25 * 60); // Default to 25 mins in seconds
     const [penaltyPoints, setPenaltyPoints] = useState(0);
     const [completedSessions, setCompletedSessions] = useState<CompletedSession[]>([]);
+    const [prefetchedQuizQuestions, setPrefetchedQuizQuestions] = useState<GenerateQuizQuestionsOutput['questions'] | null>(null);
 
     // Load completed sessions from localStorage on initial client-side render
     useEffect(() => {
@@ -119,9 +124,11 @@ export function StudySessionProvider({ children }: { children: ReactNode }) {
         setCoinsUsed(0);
         setStudyDuration(25 * 60);
         setPenaltyPoints(0);
+        setPrefetchedQuizQuestions(null);
     }, [])
 
-    const value = {
+    // Memoize the context value to prevent unnecessary re-renders
+    const value = useMemo(() => ({
         taskInfo, setTaskInfo,
         quizQuestions, setQuizQuestions,
         quizAnswers, addQuizAnswer, getAnswerForQuestion,
@@ -129,8 +136,14 @@ export function StudySessionProvider({ children }: { children: ReactNode }) {
         studyDuration, setStudyDuration,
         penaltyPoints, addPenalty,
         completedSessions, addCompletedSession,
-        resetSession
-    };
+        resetSession,
+        prefetchedQuizQuestions, setPrefetchedQuizQuestions
+    }), [
+        taskInfo, quizQuestions, quizAnswers, coinsUsed, studyDuration, 
+        penaltyPoints, completedSessions, resetSession, prefetchedQuizQuestions,
+        addQuizAnswer, getAnswerForQuestion, useCoin, addPenalty, 
+        addCompletedSession, setPrefetchedQuizQuestions
+    ]);
 
     return <StudySessionContext.Provider value={value}>{children}</StudySessionContext.Provider>;
 }

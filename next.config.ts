@@ -8,6 +8,7 @@ const nextConfig: NextConfig = {
   eslint: {
     ignoreDuringBuilds: true,
   },
+  // Optimize images
   images: {
     remotePatterns: [
       {
@@ -29,6 +30,17 @@ const nextConfig: NextConfig = {
         pathname: '/**',
       },
     ],
+  },
+  // Enable compression
+  compress: true,
+  // Enable webpack optimizations
+  webpack: (config) => {
+    // Enable top-level await
+    config.experiments = {
+      ...config.experiments,
+      topLevelAwait: true,
+    };
+    return config;
   },
 };
 

@@ -30,8 +30,33 @@ const GenerateQuizQuestionsOutputSchema = z.object({
 });
 export type GenerateQuizQuestionsOutput = z.infer<typeof GenerateQuizQuestionsOutputSchema>;
 
+// Simple in-memory cache for AI responses
+const quizCache = new Map<string, GenerateQuizQuestionsOutput>();
+
 export async function generateQuizQuestions(input: GenerateQuizQuestionsInput): Promise<GenerateQuizQuestionsOutput> {
-  return generateQuizQuestionsFlow(input);
+  // Check cache first
+  if (quizCache.has(input.pdfDataUri)) {
+    const cached = quizCache.get(input.pdfDataUri);
+    if (cached && Date.now() - cached.timestamp < 5 * 60 * 1000) { // 5 minutes TTL
+      console.log('Returning cached quiz questions');
+      return cached.data;
+    } else {
+      // Expired, remove from cache
+      quizCache.delete(input.pdfDataUri);
+    }
+  }
+
+  // Generate new questions
+  console.log('Generating new quiz questions');
+  const result = await generateQuizQuestionsFlow(input);
+  
+  // Cache the result
+  quizCache.set(input.pdfDataUri, {
+    data: result,
+    timestamp: Date.now()
+  });
+  
+  return result;
 }
 
 const prompt = ai.definePrompt({

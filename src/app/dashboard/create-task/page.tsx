@@ -1,7 +1,6 @@
-
 'use client';
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Upload, FileText, Loader2, Wand2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
@@ -11,47 +10,41 @@ import { Progress } from '@/components/ui/progress';
 import { useStudySession } from '@/contexts/study-session-context';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
+import { processPDFFile, getFileNameWithoutExtension, formatFileSize } from '@/lib/pdf-utils';
+import { pregenerateQuizQuestions } from '@/app/actions/quiz-actions';
 
 export default function CreateTaskPage() {
     const router = useRouter();
     const { toast } = useToast();
-    const { setTaskInfo, resetSession, setStudyDuration: setTimer } = useStudySession();
+    const { setTaskInfo, resetSession, setStudyDuration: setTimer, setPrefetchedQuizQuestions } = useStudySession();
     const [file, setFile] = useState<File | null>(null);
     const [isProcessing, setIsProcessing] = useState(false);
     const [progress, setProgress] = useState(0);
     const [studyMinutes, setStudyMinutes] = useState<number | string>(25);
 
-    const handleFileChange = (files: FileList | null) => {
+    const handleFileChange = useCallback((files: FileList | null) => {
         if (files && files[0]) {
-            if (files[0].type !== 'application/pdf') {
-                toast({
-                    variant: 'destructive',
-                    title: 'Invalid File Type',
-                    description: 'Please upload a PDF file.',
-                });
-                return;
-            }
             setFile(files[0]);
         }
-    };
+    }, []);
 
-    const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    const handleDragOver = useCallback((e: React.DragEvent<HTMLDivElement>) => {
         e.preventDefault();
         e.currentTarget.classList.add('border-primary');
-    };
+    }, []);
     
-    const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
+    const handleDragLeave = useCallback((e: React.DragEvent<HTMLDivElement>) => {
         e.preventDefault();
         e.currentTarget.classList.remove('border-primary');
-    };
+    }, []);
 
-    const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    const handleDrop = useCallback((e: React.DragEvent<HTMLDivElement>) => {
         e.preventDefault();
         e.currentTarget.classList.remove('border-primary');
         handleFileChange(e.dataTransfer.files);
-    };
+    }, [handleFileChange]);
 
-    const handleCreateSession = async () => {
+    const handleCreateSession = useCallback(async () => {
         if (!file) {
             toast({
                 variant: 'destructive',
@@ -63,6 +56,8 @@ export default function CreateTaskPage() {
         
         resetSession();
         setIsProcessing(true);
+        setProgress(0);
+        
         const duration = Number(studyMinutes);
         if (isNaN(duration) || duration <= 0) {
             toast({
@@ -75,36 +70,65 @@ export default function CreateTaskPage() {
         }
         setTimer(duration * 60);
         
+        // Simulate processing progress
         const progressInterval = setInterval(() => {
             setProgress((prev) => {
-                if (prev >= 95) return prev;
+                if (prev >= 90) return prev; // Leave some progress for AI generation
                 return prev + 5;
             });
         }, 200);
 
-        setTimeout(() => {
+        setTimeout(async () => {
             clearInterval(progressInterval);
-            setProgress(100);
             
-            const reader = new FileReader();
-            reader.readAsDataURL(file);
-            reader.onload = () => {
-                setTaskInfo({ name: file.name, dataUri: reader.result as string });
-                const newTaskId = `task-${Date.now()}`;
+            try {
+                // Process the PDF file
+                const result = await processPDFFile(file);
                 
+                if (!result.success) {
+                    throw new Error(result.error);
+                }
+                
+                setProgress(90);
+                setTaskInfo({ 
+                    name: getFileNameWithoutExtension(file.name), 
+                    dataUri: result.dataUri! 
+                });
+                
+                // Pre-generate quiz questions in the background
+                const newTaskId = `task-${Date.now()}`;
                 toast({
                     title: 'Session Ready!',
                     description: `Your study session for ${file.name} is ready.`,
                 });
+                
+                // Start pre-generating quiz questions while user studies
+                pregenerateQuizQuestions(result.dataUri!)
+                    .then((quizResult) => {
+                        if (quizResult.success && quizResult.questions) {
+                            setPrefetchedQuizQuestions(quizResult.questions);
+                            console.log('Quiz questions pre-generated successfully');
+                        } else {
+                            console.log('Failed to pre-generate quiz questions:', quizResult.error);
+                        }
+                    })
+                    .catch((error) => {
+                        console.error('Error pre-generating quiz questions:', error);
+                    });
+                
                 router.push(`/dashboard/study/${newTaskId}`);
-            };
-            reader.onerror = () => {
-                 toast({ variant: 'destructive', title: 'Error reading file' });
-                 setIsProcessing(false);
-                 setProgress(0);
+            } catch (error) {
+                console.error('Error processing file:', error);
+                toast({ 
+                    variant: 'destructive', 
+                    title: 'Error processing file',
+                    description: error instanceof Error ? error.message : 'An unknown error occurred'
+                });
+                setIsProcessing(false);
+                setProgress(0);
             }
         }, 1000);
-    };
+    }, [file, studyMinutes, resetSession, setTimer, setTaskInfo, router, toast, setPrefetchedQuizQuestions]);
 
     return (
         <div className="container mx-auto max-w-3xl py-8">
@@ -125,8 +149,8 @@ export default function CreateTaskPage() {
                         {file ? (
                             <div className="text-center text-primary">
                                 <FileText className="mx-auto h-12 w-12" />
-                                <p className="mt-2 font-semibold">{file.name}</p>
-                                <p className="text-sm text-muted-foreground">{Math.round(file.size / 1024)} KB</p>
+                                <p className="mt-2 font-semibold truncate max-w-xs">{file.name}</p>
+                                <p className="text-sm text-muted-foreground">{formatFileSize(file.size)}</p>
                             </div>
                         ) : (
                             <div className="text-center text-muted-foreground">
@@ -158,13 +182,18 @@ export default function CreateTaskPage() {
 
                     {isProcessing && (
                         <div className="space-y-2 pt-4">
-                             <Progress value={progress} className="w-full" />
-                             <p className="text-sm text-muted-foreground text-center animate-pulse">
-                                {progress < 30 ? 'Uploading file...' : progress < 70 ? 'Analyzing document with AI...' : 'Generating study session...'}
+                            <Progress value={progress} className="w-full" />
+                            <p className="text-sm text-muted-foreground text-center animate-pulse">
+                                {progress < 30 ? 'Uploading file...' : progress < 70 ? 'Analyzing document with AI...' : progress < 90 ? 'Generating study session...' : 'Preparing quiz questions...'}
                             </p>
                         </div>
                     )}
-                    <Button onClick={handleCreateSession} disabled={!file || isProcessing} size="lg" className="w-full bg-accent hover:bg-accent/90">
+                    <Button 
+                        onClick={handleCreateSession} 
+                        disabled={!file || isProcessing} 
+                        size="lg" 
+                        className="w-full bg-accent hover:bg-accent/90"
+                    >
                         {isProcessing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Wand2 className="mr-2 h-4 w-4" />}
                         Create Study Session
                     </Button>
