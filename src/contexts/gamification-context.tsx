@@ -170,12 +170,27 @@ export function GamificationProvider({ children }: { children: ReactNode }) {
         const todaysTime = todaysSessions.reduce((total, session) => total + (session.duration || 0), 0);
         setDailyProgress(Math.min(todaysTime, user.progress.dailyGoal || 30));
       }
+    } else {
+      // Reset to default values when no user or progress
+      setPoints(0);
+      setLevel(1);
+      setStreak(0);
+      setTotalStudyTime(0);
+      setDailyGoal(30);
+      setDailyProgress(0);
+      setBadges(defaultBadges);
+      setQuests(defaultQuests);
+      setAchievements(defaultAchievements);
     }
   }, [user]);
 
   // Sync progress to database
   const syncToDatabase = useCallback(async () => {
-    if (!user || !user.progress) return;
+    // Add safety check for user and user.progress
+    if (!user || !user.progress) {
+      console.warn('No user or progress data found, skipping sync');
+      return;
+    }
     
     try {
       const token = getValidToken();
@@ -198,7 +213,7 @@ export function GamificationProvider({ children }: { children: ReactNode }) {
           description: badge.description,
           icon: badge.icon,
           earned: !!badge.earned,
-          ...(badge.earnedAt && { earnedAt: new Date(badge.earnedAt) }),
+          ...(badge.earnedAt && { earnedAt: badge.earnedAt }),
           ...(badge.rarity && { rarity: badge.rarity })
         })),
         // Format quests according to schema
@@ -207,11 +222,11 @@ export function GamificationProvider({ children }: { children: ReactNode }) {
           name: quest.name,
           description: quest.description,
           icon: quest.icon,
-          progress: Math.floor(quest.progress || 0),
-          target: Math.floor(quest.target || 1),
-          reward: Math.floor(quest.reward || 0),
+          progress: Math.floor(quest.progress),
+          target: Math.floor(quest.target),
+          reward: Math.floor(quest.reward),
           completed: !!quest.completed,
-          ...(quest.completedAt && { completedAt: new Date(quest.completedAt) }),
+          ...(quest.completedAt && { completedAt: quest.completedAt }),
           ...(quest.category && { category: quest.category })
         })),
         // Format achievements according to schema
@@ -221,8 +236,8 @@ export function GamificationProvider({ children }: { children: ReactNode }) {
           description: achievement.description,
           icon: achievement.icon,
           earned: !!achievement.earned,
-          ...(achievement.earnedAt && { earnedAt: new Date(achievement.earnedAt) }),
-          points: Math.floor(achievement.points || 0)
+          ...(achievement.earnedAt && { earnedAt: achievement.earnedAt }),
+          points: Math.floor(achievement.points)
         })),
         lastStudyDate: new Date(),
         createdAt: new Date(),
@@ -253,6 +268,7 @@ export function GamificationProvider({ children }: { children: ReactNode }) {
 
   // Auto-sync progress when important data changes
   useEffect(() => {
+    // Add safety check for user and user.progress
     if (user && user.progress && points >= 0) {
       const timeoutId = setTimeout(() => {
         syncToDatabase();
