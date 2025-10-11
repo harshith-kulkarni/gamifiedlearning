@@ -7,6 +7,8 @@ import {
   PlusCircle,
   BarChart2,
   Settings,
+  BookOpen,
+  Library,
 } from 'lucide-react';
 
 import {
@@ -21,6 +23,7 @@ import { cn } from '@/lib/utils';
 const navItems = [
   { href: '/dashboard', icon: Home, label: 'Dashboard' },
   { href: '/dashboard/create-task', icon: PlusCircle, label: 'New Task' },
+  { href: '/dashboard/saved-flashcards', icon: Library, label: 'Saved Flashcards' },
   { href: '/dashboard/analytics', icon: BarChart2, label: 'Analytics' },
 ];
 

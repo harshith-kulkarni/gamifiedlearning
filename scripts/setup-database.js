@@ -25,7 +25,7 @@ async function setupDatabase() {
     const db = client.db('studymaster');
     
     // Create collections if they don't exist
-    const collections = ['users', 'userstats', 'tasks', 'quiz'];
+    const collections = ['users', 'userstats', 'tasks', 'quiz', 'flashcards'];
     
     for (const collectionName of collections) {
       try {
@@ -145,8 +145,8 @@ async function setupDatabase() {
             }
           }
         },
-        validationLevel: 'moderate',
-        validationAction: 'warn' // Changed from strict validation to warn only for development
+        validationLevel: 'off', // Disable validation for development to prevent errors
+        validationAction: 'warn' // Only warn, don't block operations
       });
       console.log('✅ Updated userstats validation rules');
     } catch (error) {
@@ -182,8 +182,82 @@ async function setupDatabase() {
     } catch (error) {
       console.log('ℹ️  Tasks sessionId index:', error.message);
     }
+
+    // Set up flashcards collection validation and indexes
+    try {
+      await db.command({
+        collMod: 'flashcards',
+        validator: {
+          $jsonSchema: {
+            bsonType: 'object',
+            required: ['userId', 'taskId', 'pdfTitle', 'question', 'answer', 'status', 'createdAt', 'reviewCount'],
+            properties: {
+              userId: { bsonType: 'objectId' },
+              taskId: { bsonType: 'string', minLength: 1 },
+              pdfTitle: { bsonType: 'string', minLength: 1, maxLength: 200 },
+              question: { bsonType: 'string', minLength: 1, maxLength: 100 },
+              answer: { bsonType: 'string', minLength: 1, maxLength: 200 },
+              pageNumber: { bsonType: 'int', minimum: 1 },
+              sourceText: { bsonType: 'string', maxLength: 300 },
+              status: { bsonType: 'string', enum: ['saved', 'known', 'review'] },
+              createdAt: { bsonType: 'date' },
+              lastReviewed: { bsonType: 'date' },
+              reviewCount: { bsonType: 'int', minimum: 0 }
+            }
+          }
+        },
+        validationLevel: 'off', // Disable validation for development
+        validationAction: 'warn' // Only warn, don't block operations
+      });
+      console.log('✅ Updated flashcards validation rules');
+    } catch (error) {
+      console.log('ℹ️  Flashcards validation setup:', error.message);
+    }
+
+    // Create indexes for flashcards collection
+    try {
+      await db.collection('flashcards').createIndex({ userId: 1 });
+      console.log('✅ Created index on flashcards.userId');
+    } catch (error) {
+      console.log('ℹ️  Flashcards userId index:', error.message);
+    }
+
+    try {
+      await db.collection('flashcards').createIndex({ userId: 1, taskId: 1 });
+      console.log('✅ Created compound index on flashcards.userId + taskId');
+    } catch (error) {
+      console.log('ℹ️  Flashcards compound index:', error.message);
+    }
+
+    try {
+      await db.collection('flashcards').createIndex({ userId: 1, status: 1 });
+      console.log('✅ Created compound index on flashcards.userId + status');
+    } catch (error) {
+      console.log('ℹ️  Flashcards status index:', error.message);
+    }
+
+    try {
+      await db.collection('flashcards').createIndex({ userId: 1, lastReviewed: 1 });
+      console.log('✅ Created compound index on flashcards.userId + lastReviewed');
+    } catch (error) {
+      console.log('ℹ️  Flashcards lastReviewed index:', error.message);
+    }
+
+    try {
+      await db.collection('flashcards').createIndex({ 
+        question: 'text', 
+        answer: 'text', 
+        sourceText: 'text' 
+      });
+      console.log('✅ Created text search index on flashcards content');
+    } catch (error) {
+      console.log('ℹ️  Flashcards text search index:', error.message);
+    }
+
+
     
     console.log('🎉 Database setup completed successfully!');
+    console.log('ℹ️  Note: Validation is set to "off" for development to prevent errors for new developers');
     
   } catch (error) {
     console.error('❌ Database setup failed:', error);

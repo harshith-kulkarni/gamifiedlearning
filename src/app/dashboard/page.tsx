@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useMemo, useCallback } from "react";
 import Link from "next/link";
-import { PlusCircle, Star, CheckCircle, Package, Trophy, Zap, Flame, Target, RefreshCw } from "lucide-react";
+import { PlusCircle, Package, Trophy, Flame, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -25,6 +25,8 @@ import { useGamification } from "@/contexts/gamification-context";
 import { GamificationDashboard } from "@/components/gamification/gamification-dashboard";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { SyncStatus } from "@/components/dashboard/sync-status";
+import { FlashcardDashboardWidgets } from "@/components/dashboard/flashcard-dashboard-widgets";
+
 
 // Task interface matching the data structure
 interface Task {
@@ -186,7 +188,17 @@ export default function DashboardPage() {
             </div>
           </CardContent>
         </Card>
+
       </div>
+
+      {/* Flashcard Dashboard Widgets */}
+      <div className="sm:col-span-2 md:col-span-4 lg:col-span-2 xl:col-span-4">
+        <ErrorBoundary>
+          <FlashcardDashboardWidgets />
+        </ErrorBoundary>
+      </div>
+
+
 
       {/* Gamification Dashboard */}
       <ErrorBoundary>

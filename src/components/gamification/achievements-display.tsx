@@ -118,7 +118,7 @@ export function AchievementsDisplay() {
                     variant="secondary" 
                     className="mt-1 text-xs"
                   >
-                    {badge.rarity?.charAt(0).toUpperCase() + badge.rarity?.slice(1) || 'Common'}
+                    {badge.rarity ? badge.rarity.charAt(0).toUpperCase() + badge.rarity.slice(1) : 'Common'}
                   </Badge>
                 </div>
               ))}

@@ -197,20 +197,34 @@ export function StudySessionProvider({ children }: { children: ReactNode }) {
                     return;
                 }
 
+                // Calculate quiz score based on answers
+                const totalQuestions = quizAnswers.length;
+                const correctAnswers = quizAnswers.filter(qa => {
+                    if (!quizQuestions || qa.questionIndex >= quizQuestions.length) return false;
+                    const question = quizQuestions[qa.questionIndex];
+                    return question.answer === qa.answer;
+                }).length;
+                const calculatedScore = totalQuestions > 0 ? Math.round((correctAnswers / totalQuestions) * 100) : 85;
+
                 const sessionData = {
                     id: session.id || `session_${Date.now()}`,
                     taskName: session.taskName || 'Study Session',
                     duration: Math.max(1, Math.floor(studyTimeInMinutes)), // Ensure positive integer
-                    score: Math.max(0, Math.min(100, Math.floor(session.score || 85))), // Ensure valid score 0-100
-                    points: Math.floor(session.points || 0), // Ensure integer
-                    quizAnswers: (quizAnswers || []).map((qa: QuizAnswer) => ({
-                        questionIndex: Math.floor(qa.questionIndex || 0),
-                        answer: String(qa.answer || ''),
-                        correct: Boolean(qa.correct || false)
-                    }))
+                    score: Math.max(0, Math.min(100, calculatedScore)), // Calculate from quiz answers
+                    points: Math.max(0, Math.floor(session.points || 0)), // Ensure positive integer
+                    quizAnswers: (quizAnswers || []).map((qa: QuizAnswer) => {
+                        const isCorrect = quizQuestions && qa.questionIndex < quizQuestions.length 
+                            ? quizQuestions[qa.questionIndex].answer === qa.answer
+                            : false;
+                        return {
+                            questionIndex: Math.max(0, Math.floor(qa.questionIndex || 0)),
+                            answer: String(qa.answer || ''),
+                            correct: Boolean(isCorrect)
+                        };
+                    })
                 };
 
-                console.log('Attempting to save study session:', sessionData);
+                // Attempting to save study session to database
 
                 const response = await fetch('/api/user/study-session', {
                     method: 'POST',
@@ -236,10 +250,12 @@ export function StudySessionProvider({ children }: { children: ReactNode }) {
                     console.error('Failed to save study session:', response.status, errorMessage);
                 } else {
                     const result = await response.json();
-                    console.log('Study session saved successfully:', result);
+                    // Study session saved successfully - no need to log in production
                 }
             } catch (error) {
-                console.error('Error saving study session:', error);
+                // Silently handle database save errors - don't show to user
+                // The session is still saved locally and the user can continue
+                console.warn('Study session save failed (continuing with local storage):', error instanceof Error ? error.message : 'Unknown error');
             }
         };
 

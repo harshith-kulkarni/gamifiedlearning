@@ -5,7 +5,7 @@ import { useRouter, useParams } from 'next/navigation';
 import { useStudySession } from '@/contexts/study-session-context';
 import { useGamification } from '@/contexts/gamification-context';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, BookOpen, AlertTriangle, Zap, Star, Target, Trophy, Flame, Maximize2, Minimize2, MessageSquare, Timer } from 'lucide-react';
+import { Loader2, BookOpen, AlertTriangle, Zap, Star, Target, Trophy, Flame, Maximize2, Minimize2, MessageSquare, Timer, FileText, Sparkles } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { IntegratedTimer } from '@/components/study/integrated-timer';
 import { Logo } from '@/components/icons';
@@ -15,9 +15,8 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { PowerUpActivator } from '@/components/gamification/power-up-activator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-
-// Import AI chat directly instead of lazy loading to avoid visibility issues
-import { AIChat } from '@/components/study/ai-chat';
+import { FlashcardGenerator, FlashcardViewer, AIChat } from '@/components/study';
+import { Flashcard } from '@/lib/models/flashcard';
 
 export default function StudyPage() {
     const router = useRouter();
@@ -30,6 +29,10 @@ export default function StudyPage() {
     const [pdfWidth, setPdfWidth] = useState(60); // PDF takes 60% width initially
     const [activeTab, setActiveTab] = useState('timer'); // 'timer' or 'chat'
     const [isFullscreen, setIsFullscreen] = useState(false);
+    
+    // Flashcard system state
+    const [currentView, setCurrentView] = useState<'pdf' | 'flashcard-generator' | 'flashcard-viewer'>('pdf');
+    const [generatedFlashcards, setGeneratedFlashcards] = useState<Flashcard[]>([]);
 
     useEffect(() => {
         setIsClient(true);
@@ -120,6 +123,24 @@ export default function StudyPage() {
         setPdfWidth(Math.max(30, Math.min(95, newWidth)));
     };
 
+    // Flashcard system handlers
+    const handleToggleToFlashcardGenerator = useCallback(() => {
+        setCurrentView('flashcard-generator');
+    }, []);
+
+    const handleToggleToPdf = useCallback(() => {
+        setCurrentView('pdf');
+    }, []);
+
+    const handleFlashcardsGenerated = useCallback((flashcards: Flashcard[]) => {
+        setGeneratedFlashcards(flashcards);
+        setCurrentView('flashcard-viewer');
+    }, []);
+
+    const handleBackToGenerator = useCallback(() => {
+        setCurrentView('flashcard-generator');
+    }, []);
+
     return (
         <div className="flex flex-col h-[calc(100vh-8rem)] gap-4 animate-fadeIn">
             {/* Compact Gamification Header */}
@@ -129,6 +150,29 @@ export default function StudyPage() {
                         <Target className="h-4 w-4 text-primary" />
                         <span className="font-bold text-sm">Study Session</span>
                     </div>
+                    
+                    {/* View Toggle Indicator */}
+                    <div className="flex items-center gap-2 bg-white dark:bg-black/20 px-3 py-1.5 rounded-full shadow-md">
+                        {currentView === 'pdf' && (
+                            <>
+                                <FileText className="h-4 w-4 text-blue-500" />
+                                <span className="font-bold text-sm text-blue-600">PDF View</span>
+                            </>
+                        )}
+                        {currentView === 'flashcard-generator' && (
+                            <>
+                                <Zap className="h-4 w-4 text-purple-500" />
+                                <span className="font-bold text-sm text-purple-600">Generating</span>
+                            </>
+                        )}
+                        {currentView === 'flashcard-viewer' && (
+                            <>
+                                <Sparkles className="h-4 w-4 text-green-500" />
+                                <span className="font-bold text-sm text-green-600">Flashcards</span>
+                            </>
+                        )}
+                    </div>
+                    
                     <div className="flex items-center gap-2 bg-yellow-100 dark:bg-yellow-900/30 px-3 py-1.5 rounded-full">
                         <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />
                         <span className="font-bold text-sm">{points}</span>
@@ -143,6 +187,47 @@ export default function StudyPage() {
                         <Trophy className="h-4 w-4 text-blue-500" />
                         <span className="font-bold text-sm">L{level}</span>
                     </div>
+                    
+                    {/* View Toggle Buttons */}
+                    {currentView !== 'pdf' && (
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={handleToggleToPdf}
+                            className="flex items-center gap-2 rounded-full"
+                            aria-label="Switch to PDF view"
+                        >
+                            <FileText className="h-4 w-4" />
+                            <span className="hidden sm:inline">PDF</span>
+                        </Button>
+                    )}
+                    
+                    {currentView === 'pdf' && taskInfo.dataUri && (
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={handleToggleToFlashcardGenerator}
+                            className="flex items-center gap-2 rounded-full bg-gradient-to-r from-primary/10 to-accent/10 hover:from-primary/20 hover:to-accent/20"
+                            aria-label="Generate flashcards"
+                        >
+                            <Sparkles className="h-4 w-4" />
+                            <span className="hidden sm:inline">Flashcards</span>
+                        </Button>
+                    )}
+                    
+                    {currentView === 'flashcard-viewer' && generatedFlashcards.length > 0 && (
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={handleBackToGenerator}
+                            className="flex items-center gap-2 rounded-full"
+                            aria-label="Back to flashcard generator"
+                        >
+                            <Zap className="h-4 w-4" />
+                            <span className="hidden sm:inline">Generator</span>
+                        </Button>
+                    )}
+                    
                     <PowerUpActivator />
                     <Button
                         variant="outline"
@@ -156,88 +241,123 @@ export default function StudyPage() {
             </div>
             
             <div className="flex flex-1 gap-4 min-h-0">
-                {/* PDF Viewer Section */}
+                {/* Main Content Area - PDF or Flashcard Views */}
                 <div 
                     className="transition-all duration-300 rounded-xl group h-full"
-                    style={{ width: `${pdfWidth}%` }}
+                    style={{ width: currentView === 'flashcard-viewer' ? '100%' : `${pdfWidth}%` }}
                 >
-                    <Card className="h-full transition-all duration-300 group-hover:shadow-lg hover:shadow-xl gamify-card rounded-xl overflow-hidden border-2 border-primary/20">
-                        <CardHeader className="flex flex-row items-center justify-between pb-2 bg-gradient-to-r from-primary/10 to-accent/10">
-                            <CardTitle className="text-base font-medium flex items-center gap-2">
-                                <BookOpen className="h-4 w-4 text-primary" />
-                                {taskInfo.name}
-                            </CardTitle>
-                            <div className="flex items-center gap-2">
-                                <div className="h-2 w-2 rounded-full bg-green-500 animate-pulse"></div>
-                                <span className="text-xs text-muted-foreground">Active</span>
-                                <div className="flex gap-1">
+                    {currentView === 'pdf' && (
+                        <Card className="h-full transition-all duration-300 group-hover:shadow-lg hover:shadow-xl gamify-card rounded-xl overflow-hidden border-2 border-primary/20">
+                            <CardHeader className="flex flex-row items-center justify-between pb-2 bg-gradient-to-r from-primary/10 to-accent/10">
+                                <CardTitle className="text-base font-medium flex items-center gap-2">
+                                    <BookOpen className="h-4 w-4 text-primary" />
+                                    {taskInfo.name}
+                                </CardTitle>
+                                <div className="flex items-center gap-2">
+                                    <div className="h-2 w-2 rounded-full bg-green-500 animate-pulse"></div>
+                                    <span className="text-xs text-muted-foreground">Active</span>
+                                    
+                                    {/* Flashcard Generation Button */}
                                     <Button
-                                        variant="ghost"
+                                        variant="outline"
                                         size="sm"
-                                        onClick={() => adjustPdfWidth(pdfWidth - 10)}
-                                        className="h-6 w-6 p-0"
+                                        onClick={handleToggleToFlashcardGenerator}
+                                        className="flex items-center gap-2 bg-gradient-to-r from-primary/10 to-accent/10 hover:from-primary/20 hover:to-accent/20 transition-all duration-200"
+                                        aria-label="Generate flashcards from this PDF"
                                     >
-                                        -
+                                        <Sparkles className="h-4 w-4" />
+                                        <span className="hidden sm:inline">Generate Flashcards</span>
+                                        <span className="sm:hidden">Cards</span>
                                     </Button>
-                                    <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={() => adjustPdfWidth(pdfWidth + 10)}
-                                        className="h-6 w-6 p-0"
+                                    
+                                    <div className="flex gap-1">
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => adjustPdfWidth(pdfWidth - 10)}
+                                            className="h-6 w-6 p-0"
+                                        >
+                                            -
+                                        </Button>
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => adjustPdfWidth(pdfWidth + 10)}
+                                            className="h-6 w-6 p-0"
+                                        >
+                                            +
+                                        </Button>
+                                    </div>
+                                </div>
+                            </CardHeader>
+                            <CardContent className="h-full p-0 relative rounded-b-xl bg-gradient-to-b from-background to-muted/20">
+                                {taskInfo.dataUri ? (
+                                    <object 
+                                        data={taskInfo.dataUri} 
+                                        type="application/pdf" 
+                                        className="h-full w-full rounded-b-xl"
                                     >
-                                        +
-                                    </Button>
-                                </div>
-                            </div>
-                        </CardHeader>
-                        <CardContent className="h-full p-0 relative rounded-b-xl bg-gradient-to-b from-background to-muted/20">
-                            {taskInfo.dataUri ? (
-                                <object 
-                                    data={taskInfo.dataUri} 
-                                    type="application/pdf" 
-                                    className="h-full w-full rounded-b-xl"
-                                >
-                                    <p className="p-4">PDF viewer is not available. You can download the PDF <a href={taskInfo.dataUri} download className="text-primary underline">here</a>.</p>
-                                </object>
-                            ) : (
-                                <div className="flex items-center justify-center h-full">
-                                    <p className="text-muted-foreground">Loading document...</p>
-                                </div>
-                            )}
-                        </CardContent>
-                    </Card>
+                                        <p className="p-4">PDF viewer is not available. You can download the PDF <a href={taskInfo.dataUri} download className="text-primary underline">here</a>.</p>
+                                    </object>
+                                ) : (
+                                    <div className="flex items-center justify-center h-full">
+                                        <p className="text-muted-foreground">Loading document...</p>
+                                    </div>
+                                )}
+                            </CardContent>
+                        </Card>
+                    )}
+
+                    {currentView === 'flashcard-generator' && (
+                        <FlashcardGenerator
+                            taskId={params.id as string}
+                            onToggleView={handleToggleToPdf}
+                            onFlashcardsGenerated={handleFlashcardsGenerated}
+                        />
+                    )}
+
+                    {currentView === 'flashcard-viewer' && (
+                        <FlashcardViewer
+                            flashcards={generatedFlashcards}
+                            taskId={params.id as string}
+                            pdfTitle={taskInfo.name}
+                            onBackToPdf={handleToggleToPdf}
+                        />
+                    )}
                 </div>
                 
-                {/* Right Panel - Timer and Chat */}
-                <div className="flex flex-col gap-4 flex-1 min-w-0 h-full">
-                    <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full flex flex-col">
-                        <TabsList className="grid w-full grid-cols-2">
-                            <TabsTrigger value="timer" className="flex items-center gap-2">
-                                <Timer className="h-4 w-4" />
-                                Timer
-                            </TabsTrigger>
-                            <TabsTrigger value="chat" className="flex items-center gap-2">
-                                <MessageSquare className="h-4 w-4" />
-                                AI Chat
-                            </TabsTrigger>
-                        </TabsList>
-                        
-                        <TabsContent value="timer" className="flex-1 mt-4">
-                            <div className="h-full">
-                                <IntegratedTimer 
-                                    onComplete={handleSessionComplete} 
-                                    onEarlyFinish={handleEarlyFinish}
-                                />
-                            </div>
-                        </TabsContent>
-                        
-                        <TabsContent value="chat" className="flex-1 mt-4">
-                            <div className="h-full">
-                                <AIChat pdfDataUri={taskInfo.dataUri} />
-                            </div>
-                        </TabsContent>
-                    </Tabs>
-                </div>
+                {/* Right Panel - Timer and Chat (hidden in flashcard viewer mode) */}
+                {currentView !== 'flashcard-viewer' && (
+                    <div className="flex flex-col gap-4 flex-1 min-w-0 h-full">
+                        <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full flex flex-col">
+                            <TabsList className="grid w-full grid-cols-2">
+                                <TabsTrigger value="timer" className="flex items-center gap-2">
+                                    <Timer className="h-4 w-4" />
+                                    Timer
+                                </TabsTrigger>
+                                <TabsTrigger value="chat" className="flex items-center gap-2">
+                                    <MessageSquare className="h-4 w-4" />
+                                    AI Chat
+                                </TabsTrigger>
+                            </TabsList>
+                            
+                            <TabsContent value="timer" className="flex-1 mt-4">
+                                <div className="h-full">
+                                    <IntegratedTimer 
+                                        onComplete={handleSessionComplete} 
+                                        onEarlyFinish={handleEarlyFinish}
+                                    />
+                                </div>
+                            </TabsContent>
+                            
+                            <TabsContent value="chat" className="flex-1 mt-4">
+                                <div className="h-full">
+                                    <AIChat pdfDataUri={taskInfo.dataUri} />
+                                </div>
+                            </TabsContent>
+                        </Tabs>
+                    </div>
+                )}
             </div>
         </div>
     );

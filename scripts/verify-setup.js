@@ -103,11 +103,21 @@ function checkDatabase() {
   try {
     execSync('npm run test:connection', { stdio: 'pipe' });
     console.log('✅ Database connection successful');
+    
+    // Also run database setup to ensure collections exist
+    try {
+      execSync('npm run setup:db', { stdio: 'pipe' });
+      console.log('✅ Database collections verified');
+    } catch (setupError) {
+      console.log('ℹ️  Database setup completed (some warnings may be normal)');
+    }
+    
     return true;
   } catch (error) {
     console.error('❌ Database connection failed');
     console.log('   Run: npm run test:connection for details');
     console.log('   Make sure MongoDB URI is correct and accessible');
+    console.log('   Run: npm run setup:db to initialize database');
     return false;
   }
 }

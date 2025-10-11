@@ -31,7 +31,11 @@ const GenerateQuizQuestionsOutputSchema = z.object({
 export type GenerateQuizQuestionsOutput = z.infer<typeof GenerateQuizQuestionsOutputSchema>;
 
 // Simple in-memory cache for AI responses
-const quizCache = new Map<string, GenerateQuizQuestionsOutput>();
+interface CachedQuizResult {
+  data: GenerateQuizQuestionsOutput;
+  timestamp: number;
+}
+const quizCache = new Map<string, CachedQuizResult>();
 
 export async function generateQuizQuestions(input: GenerateQuizQuestionsInput): Promise<GenerateQuizQuestionsOutput> {
   // Check cache first

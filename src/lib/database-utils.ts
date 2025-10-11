@@ -5,7 +5,7 @@
  * data validation, and auto-increment functionality.
  */
 
-import { MongoClient, Db, Collection, ObjectId } from 'mongodb';
+import { MongoClient, Db, Collection, ObjectId, Document } from 'mongodb';
 import clientPromise from './mongodb';
 
 export interface User {
@@ -126,7 +126,7 @@ export async function getDb(): Promise<Db> {
 /**
  * Get a specific collection with type safety
  */
-export async function getCollection<T>(collectionName: string): Promise<Collection<T>> {
+export async function getCollection<T extends Document>(collectionName: string): Promise<Collection<T>> {
   const db = await getDb();
   return db.collection<T>(collectionName);
 }

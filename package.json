@@ -60,6 +60,7 @@
     "node-fetch": "^3.3.2",
     "pdf-parse": "^1.1.1",
     "react": "^18",
+    "react-day-picker": "^9.11.1",
     "react-dom": "^18",
     "react-hook-form": "^7.53.0",
     "recharts": "^2.8.0",

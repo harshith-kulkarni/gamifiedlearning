@@ -26,14 +26,19 @@ export async function POST(request: NextRequest) {
     const userId = await getUserFromToken(request);
     const sessionData = await request.json();
 
+    // Validate and sanitize input data
     const studySession: StudySession = {
-      id: sessionData.id || `session_${Date.now()}`,
-      taskName: sessionData.taskName,
-      duration: sessionData.duration,
-      score: sessionData.score,
-      points: sessionData.points,
+      id: String(sessionData.id || `session_${Date.now()}`),
+      taskName: String(sessionData.taskName || 'Study Session'),
+      duration: Math.max(1, Math.floor(Number(sessionData.duration) || 1)),
+      score: Math.max(0, Math.min(100, Math.floor(Number(sessionData.score) || 0))),
+      points: Math.max(0, Math.floor(Number(sessionData.points) || 0)),
       completedAt: new Date(),
-      quizAnswers: sessionData.quizAnswers || [],
+      quizAnswers: Array.isArray(sessionData.quizAnswers) ? sessionData.quizAnswers.map((qa: any) => ({
+        questionIndex: Math.max(0, Math.floor(Number(qa.questionIndex) || 0)),
+        answer: String(qa.answer || ''),
+        correct: Boolean(qa.correct)
+      })) : [],
     };
 
     await AtlasUserService.addStudySession(userId, studySession);
