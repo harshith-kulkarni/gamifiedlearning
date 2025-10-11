@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { AtlasUserService } from '@/lib/services/atlas-user-service';
-import jwt from 'jsonwebtoken';
+import { AuthService } from '@/lib/services/auth-service';
 
 export async function POST(request: NextRequest) {
   try {
@@ -13,31 +12,54 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const user = await AtlasUserService.authenticateUser(email, password);
-
-    if (!user) {
+    const result = await AuthService.login(email, password);
+    
+    if (!result) {
       return NextResponse.json(
         { error: 'Invalid email or password' },
         { status: 401 }
       );
     }
 
-    // Create JWT token
-    const token = jwt.sign(
-      { userId: user._id?.toString(), email: user.email },
-      process.env.NEXTAUTH_SECRET || 'fallback-secret',
-      { expiresIn: '7d' }
-    );
+    const { user, token } = result;
 
-    // Remove password from response
-    const { password: _, ...userWithoutPassword } = user;
-
-    return NextResponse.json({
-      user: userWithoutPassword,
+    // Set cookie with token (optional, but useful for browser-based auth)
+    const response = NextResponse.json({
+      success: true,
+      user: {
+        id: user._id,
+        username: user.username,
+        email: user.email,
+      },
       token,
     });
-  } catch (error) {
+
+    // Set HTTP-only cookie for better security
+    response.cookies.set('auth-token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      maxAge: 60 * 60 * 24 * 7, // 1 week
+      path: '/',
+    });
+
+    return response;
+  } catch (error: any) {
     console.error('Login error:', error);
+    
+    if (error.message === 'Invalid email or password') {
+      return NextResponse.json(
+        { error: 'Invalid email or password' },
+        { status: 401 }
+      );
+    }
+    
+    if (error.message === 'User with this email or username already exists') {
+      return NextResponse.json(
+        { error: 'User already exists' },
+        { status: 409 }
+      );
+    }
+
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

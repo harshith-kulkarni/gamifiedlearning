@@ -10,6 +10,7 @@ interface AuthContextType {
   logout: () => void;
   isLoading: boolean;
   error: string | null;
+  getValidToken: () => string | null;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -116,6 +117,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem('auth-token');
   };
 
+  const getValidToken = () => {
+    const token = localStorage.getItem('auth-token');
+    if (token && user) {
+      return token;
+    }
+    return null;
+  };
+
   const value = {
     user,
     login,
@@ -123,6 +132,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     logout,
     isLoading,
     error,
+    getValidToken,
   };
 
   return (

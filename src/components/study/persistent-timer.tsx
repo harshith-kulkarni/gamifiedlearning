@@ -16,7 +16,7 @@ interface PersistentTimerProps {
 }
 
 export function PersistentTimer({ onComplete, onEarlyFinish }: PersistentTimerProps) {
-    const { user } = useAuth();
+    const { user, getValidToken } = useAuth();
     const { taskInfo, studyDuration, setStudyDuration, timerState, updateTimerState, resetTimer } = useStudySession();
     const { addStudyTime, addPoints, incrementStreak, powerUps } = useGamification();
     const { toast } = useToast();
@@ -56,9 +56,9 @@ export function PersistentTimer({ onComplete, onEarlyFinish }: PersistentTimerPr
             if (user && taskInfo) {
                 const saveSession = async () => {
                     try {
-                        const token = localStorage.getItem('auth-token');
+                        const token = getValidToken();
                         if (!token) {
-                            console.warn('No auth token found, skipping database save');
+                            console.warn('No valid auth token found, skipping database save');
                             return;
                         }
 
@@ -176,9 +176,9 @@ export function PersistentTimer({ onComplete, onEarlyFinish }: PersistentTimerPr
                 if (user && taskInfo) {
                     const savePartialSession = async () => {
                         try {
-                            const token = localStorage.getItem('auth-token');
+                            const token = getValidToken();
                             if (!token) {
-                                console.warn('No auth token found, skipping partial session save');
+                                console.warn('No valid auth token found, skipping partial session save');
                                 return;
                             }
 

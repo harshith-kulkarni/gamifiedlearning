@@ -65,7 +65,7 @@ interface StudySessionContextType {
 const StudySessionContext = createContext<StudySessionContextType | undefined>(undefined);
 
 export function StudySessionProvider({ children }: { children: ReactNode }) {
-    const { user } = useAuth();
+    const { user, getValidToken } = useAuth();
     const [taskInfo, setTaskInfo] = useState<TaskInfo | null>(null);
     const [quizQuestions, setQuizQuestions] = useState<GenerateQuizQuestionsOutput['questions'] | null>(null);
     const [quizAnswers, setQuizAnswers] = useState<QuizAnswer[]>([]);
@@ -190,9 +190,9 @@ export function StudySessionProvider({ children }: { children: ReactNode }) {
         // Save to database - but don't block the UI if it fails
         const saveToDatabase = async () => {
             try {
-                const token = localStorage.getItem('auth-token');
+                const token = getValidToken();
                 if (!token) {
-                    console.warn('No auth token found, skipping database save');
+                    console.warn('No valid auth token found, skipping database save');
                     return;
                 }
 

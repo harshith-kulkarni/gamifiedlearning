@@ -1,29 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { AtlasUserService } from '@/lib/services/atlas-user-service';
-import jwt from 'jsonwebtoken';
-
-async function getUserFromToken(request: NextRequest) {
-  const authHeader = request.headers.get('authorization');
-  
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    throw new Error('No token provided');
-  }
-
-  const token = authHeader.substring(7);
-  const decoded = jwt.verify(token, process.env.NEXTAUTH_SECRET || 'fallback-secret') as {
-    userId: string;
-    email: string;
-  };
-
-  return decoded.userId;
-}
+import { authenticateRequest } from '@/lib/auth-middleware';
 
 export async function GET(request: NextRequest) {
   try {
-    const userId = await getUserFromToken(request);
-    const user = await AtlasUserService.getUserById(userId);
-
+    const user = await authenticateRequest(request);
+    
     if (!user) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+
+    const userData = await AtlasUserService.getUserById(user.userId);
+
+    if (!userData) {
       return NextResponse.json(
         { error: 'User not found' },
         { status: 404 }
@@ -31,7 +23,7 @@ export async function GET(request: NextRequest) {
     }
 
     return NextResponse.json({
-      progress: user.progress,
+      progress: userData.progress,
     });
   } catch (error) {
     console.error('Get progress error:', error);
@@ -44,19 +36,48 @@ export async function GET(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
-    const userId = await getUserFromToken(request);
+    const user = await authenticateRequest(request);
+    
+    if (!user) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+
     const progressUpdate = await request.json();
 
-    await AtlasUserService.updateUserProgress(userId, progressUpdate);
+    console.log('🔄 Updating progress for user:', user.userId);
+    console.log('📊 Progress data received:', JSON.stringify(progressUpdate, null, 2));
+
+    await AtlasUserService.updateUserProgress(user.userId, progressUpdate);
 
     return NextResponse.json({
       success: true,
     });
-  } catch (error) {
-    console.error('Update progress error:', error);
+  } catch (error: any) {
+    console.error('❌ Update progress error:', error);
+    
+    // Return specific error messages for debugging
+    if (error instanceof Error) {
+      if (error.message.includes('No token') || error.message.includes('Invalid token')) {
+        return NextResponse.json(
+          { error: 'Authentication failed', details: error.message },
+          { status: 401 }
+        );
+      }
+      if (error.message.includes('Database validation')) {
+        console.error('📋 Validation error details:', error.message);
+        return NextResponse.json(
+          { error: 'Data validation failed', details: error.message },
+          { status: 400 }
+        );
+      }
+    }
+    
     return NextResponse.json(
-      { error: 'Unauthorized' },
-      { status: 401 }
+      { error: 'Internal server error', details: error instanceof Error ? error.message : 'Unknown error' },
+      { status: 500 }
     );
   }
 }

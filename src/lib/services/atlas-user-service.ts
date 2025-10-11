@@ -179,23 +179,87 @@ export class AtlasUserService {
       );
     }
 
-    // Update detailed stats in userstats collection
+    // Update detailed stats in userstats collection with proper data validation
     const statsUpdates: any = {
       updatedAt: new Date()
     };
 
-    if (updates.level !== undefined) statsUpdates.level = updates.level;
-    if (updates.points !== undefined) statsUpdates.points = updates.points;
-    if (updates.streak !== undefined) statsUpdates.streak = updates.streak;
-    if (updates.totalStudyTime !== undefined) statsUpdates.totalStudyTime = updates.totalStudyTime;
-    if (updates.lastStudyDate !== undefined) statsUpdates.lastStudyDate = updates.lastStudyDate;
-    if (updates.dailyGoal !== undefined) statsUpdates.dailyGoal = updates.dailyGoal;
+    // Add required fields if not present
+    statsUpdates.createdAt = new Date();
 
-    await userStats.updateOne(
-      { userId: new ObjectId(userId) },
-      { $set: statsUpdates },
-      { upsert: true }
-    );
+    // Validate and sanitize data types before database operations
+    if (updates.level !== undefined && typeof updates.level === 'number') {
+      statsUpdates.level = Math.floor(Math.max(1, updates.level));
+    }
+    if (updates.points !== undefined && typeof updates.points === 'number') {
+      statsUpdates.points = Math.floor(Math.max(0, updates.points));
+    }
+    if (updates.streak !== undefined && typeof updates.streak === 'number') {
+      statsUpdates.streak = Math.floor(Math.max(0, updates.streak));
+    }
+    if (updates.totalStudyTime !== undefined && typeof updates.totalStudyTime === 'number') {
+      statsUpdates.totalStudyTime = Math.floor(Math.max(0, updates.totalStudyTime));
+    }
+    if (updates.lastStudyDate !== undefined) {
+      // Ensure lastStudyDate is properly formatted as a Date object
+      statsUpdates.lastStudyDate = new Date(updates.lastStudyDate);
+    }
+    if (updates.dailyGoal !== undefined && typeof updates.dailyGoal === 'number') {
+      statsUpdates.dailyGoal = Math.floor(Math.max(0, updates.dailyGoal));
+    }
+    if (updates.badges !== undefined && Array.isArray(updates.badges)) {
+      // Format badges according to schema
+      statsUpdates.badges = updates.badges.map(badge => ({
+        id: badge.id,
+        name: badge.name,
+        description: badge.description,
+        icon: badge.icon,
+        earned: !!badge.earned,
+        ...(badge.earnedAt && { earnedAt: new Date(badge.earnedAt) }),
+        ...(badge.rarity && { rarity: badge.rarity })
+      }));
+    }
+    if (updates.quests !== undefined && Array.isArray(updates.quests)) {
+      // Format quests according to schema
+      statsUpdates.quests = updates.quests.map(quest => ({
+        id: quest.id,
+        name: quest.name,
+        description: quest.description,
+        icon: quest.icon,
+        progress: Math.floor(quest.progress || 0),
+        target: Math.floor(quest.target || 1),
+        reward: Math.floor(quest.reward || 0),
+        completed: !!quest.completed,
+        ...(quest.completedAt && { completedAt: new Date(quest.completedAt) }),
+        ...(quest.category && { category: quest.category })
+      }));
+    }
+    if (updates.achievements !== undefined && Array.isArray(updates.achievements)) {
+      // Format achievements according to schema
+      statsUpdates.achievements = updates.achievements.map(achievement => ({
+        id: achievement.id,
+        name: achievement.name,
+        description: achievement.description,
+        icon: achievement.icon,
+        earned: !!achievement.earned,
+        ...(achievement.earnedAt && { earnedAt: new Date(achievement.earnedAt) }),
+        points: Math.floor(achievement.points || 0)
+      }));
+    }
+
+    try {
+      await userStats.updateOne(
+        { userId: new ObjectId(userId) },
+        { $set: statsUpdates },
+        { upsert: true }
+      );
+
+      console.log(`✅ Updated user progress for ${userId}:`, statsUpdates);
+    } catch (error) {
+      console.error(`❌ Failed to update user progress for ${userId}:`, error);
+      console.error('Data being updated:', JSON.stringify(statsUpdates, null, 2));
+      throw new Error(`Database validation failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
   }
 
   /**

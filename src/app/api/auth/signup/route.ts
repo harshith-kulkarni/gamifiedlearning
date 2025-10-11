@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { AtlasUserService } from '@/lib/services/atlas-user-service';
-import jwt from 'jsonwebtoken';
+import { AuthService } from '@/lib/services/auth-service';
 
 export async function POST(request: NextRequest) {
   try {
@@ -13,35 +12,60 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (password.length < 8) {
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
       return NextResponse.json(
-        { error: 'Password must be at least 8 characters long' },
+        { error: 'Invalid email format' },
         { status: 400 }
       );
     }
 
-    const user = await AtlasUserService.createUser(username, email, password);
+    // Validate password strength (at least 6 characters)
+    if (password.length < 6) {
+      return NextResponse.json(
+        { error: 'Password must be at least 6 characters long' },
+        { status: 400 }
+      );
+    }
 
-    // Create JWT token
-    const token = jwt.sign(
-      { userId: user._id?.toString(), email: user.email },
-      process.env.NEXTAUTH_SECRET || 'fallback-secret',
-      { expiresIn: '7d' }
-    );
+    const result = await AuthService.register(username, email, password);
+    
+    if (!result) {
+      return NextResponse.json(
+        { error: 'Registration failed' },
+        { status: 500 }
+      );
+    }
 
-    // Remove password from response
-    const { password: _, ...userWithoutPassword } = user;
+    const { user, token } = result;
 
-    return NextResponse.json({
-      user: userWithoutPassword,
+    // Set cookie with token
+    const response = NextResponse.json({
+      success: true,
+      user: {
+        id: user._id,
+        username: user.username,
+        email: user.email,
+      },
       token,
     });
-  } catch (error) {
+
+    // Set HTTP-only cookie for better security
+    response.cookies.set('auth-token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      maxAge: 60 * 60 * 24 * 7, // 1 week
+      path: '/',
+    });
+
+    return response;
+  } catch (error: any) {
     console.error('Signup error:', error);
     
-    if (error instanceof Error && error.message.includes('already exists')) {
+    if (error.message === 'User with this email or username already exists') {
       return NextResponse.json(
-        { error: error.message },
+        { error: 'User with this email or username already exists' },
         { status: 409 }
       );
     }

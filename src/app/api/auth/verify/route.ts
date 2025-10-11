@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { AtlasUserService } from '@/lib/services/atlas-user-service';
-import jwt from 'jsonwebtoken';
+import { AuthService } from '@/lib/services/auth-service';
 
 export async function GET(request: NextRequest) {
   try {
@@ -14,34 +13,32 @@ export async function GET(request: NextRequest) {
     }
 
     const token = authHeader.substring(7);
-
-    try {
-      const decoded = jwt.verify(token, process.env.NEXTAUTH_SECRET || 'fallback-secret') as {
-        userId: string;
-        email: string;
-      };
-
-      const user = await AtlasUserService.getUserById(decoded.userId);
-
-      if (!user) {
-        return NextResponse.json(
-          { error: 'User not found' },
-          { status: 404 }
-        );
-      }
-
-      // Remove password from response
-      const { password: _, ...userWithoutPassword } = user;
-
-      return NextResponse.json({
-        user: userWithoutPassword,
-      });
-    } catch (jwtError) {
+    const payload = AuthService.verifyToken(token);
+    
+    if (!payload) {
       return NextResponse.json(
-        { error: 'Invalid token' },
+        { error: 'Invalid or expired token' },
         { status: 401 }
       );
     }
+
+    // Get user details
+    const user = await AuthService.getUserById(payload.userId);
+    
+    if (!user) {
+      return NextResponse.json(
+        { error: 'User not found' },
+        { status: 404 }
+      );
+    }
+
+    return NextResponse.json({
+      user: {
+        id: user._id,
+        username: user.username,
+        email: user.email,
+      }
+    });
   } catch (error) {
     console.error('Token verification error:', error);
     return NextResponse.json(

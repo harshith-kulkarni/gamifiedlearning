@@ -15,19 +15,56 @@
   - Generate and secure connection string for environment variables
   - _Requirements: 1.1, 1.2, 1.3, 6.1, 6.5_
 
-- [ ] 2. Update database connection configuration
-  - [ ] 2.1 Modify MongoDB connection options for Atlas optimization
-    - Update connection options in src/lib/mongodb.ts for Atlas-specific settings
-    - Add connection pooling optimization for free tier limits (maxPoolSize: 10)
-    - Implement enhanced error handling for Atlas connection scenarios
-    - Add connection validation and health check functionality
-    - _Requirements: 2.1, 2.2, 5.1, 5.2_
+- [ ] 1.5. URGENT: Fix immediate validation and authentication errors for team collaboration
+  - [ ] 1.5.1 Fix MongoDB document validation failures
+    - Debug and fix "Document failed validation" errors in user progress updates
+    - Ensure all data types match MongoDB schema requirements (numbers, dates, arrays)
+    - Add proper data sanitization and type checking before database operations
+    - Create database schema validation script to prevent future validation errors
+    - _Requirements: 4.1, 4.5_
 
-  - [ ] 2.2 Update environment variable configuration
-    - Update .env.example with Atlas connection string format
-    - Document environment variable setup for development and production
-    - Add validation for required environment variables
-    - _Requirements: 6.2, 6.5_
+  - [ ] 1.5.2 Fix JWT authentication 401 errors
+    - Debug JWT token verification failures causing 401 unauthorized responses
+    - Ensure NEXTAUTH_SECRET consistency and proper format across all environments
+    - Add detailed authentication error logging with specific failure reasons
+    - Create authentication troubleshooting guide for team members
+    - _Requirements: 4.3, 7.1_
+
+  - [ ] 1.5.3 Create immediate team setup verification tools
+    - Create quick database connection test script (npm run test-db)
+    - Create database setup script to ensure proper collections and validation (npm run setup-db)
+    - Add environment variable validation on application startup
+    - Create step-by-step troubleshooting checklist for team members experiencing issues
+    - _Requirements: 8.1, 8.3_
+
+- [ ] 2. Fix clone-ready database configuration and validation issues
+  - [ ] 2.1 Fix MongoDB document validation errors
+    - Update AtlasUserService to properly validate data types before database operations
+    - Add proper type checking and data sanitization for all user progress updates
+    - Fix schema validation issues causing "Document failed validation" errors
+    - Implement proper error handling for validation failures with user-friendly messages
+    - _Requirements: 2.1, 2.2, 4.1, 4.5_
+
+  - [ ] 2.2 Fix authentication token validation issues
+    - Debug and fix JWT token verification causing 401 unauthorized errors
+    - Ensure NEXTAUTH_SECRET is properly configured and consistent across environments
+    - Add comprehensive error logging for authentication failures
+    - Implement proper token validation with detailed error messages
+    - _Requirements: 2.1, 4.3, 7.1_
+
+  - [ ] 2.3 Create database setup and validation scripts
+    - Create automated database setup script to ensure proper schema and collections
+    - Add database connection testing script to verify Atlas connectivity
+    - Implement database health check endpoint for troubleshooting
+    - Create validation script to verify all required environment variables
+    - _Requirements: 6.2, 6.5, 8.1_
+
+  - [ ] 2.4 Update environment configuration for team collaboration
+    - Update .env.example with complete Atlas connection string format and all required variables
+    - Create detailed setup documentation for new team members
+    - Add environment variable validation on application startup
+    - Document IP whitelisting requirements and setup for Atlas
+    - _Requirements: 6.2, 6.5, 8.1, 8.4_
 
 - [ ] 3. Implement data migration utilities
   - [ ] 3.1 Create data export functionality
@@ -43,18 +80,20 @@
     - Validate all user progress data (points, badges, achievements, study sessions)
     - _Requirements: 4.1, 4.2, 4.4, 4.6_
 
-- [ ] 4. Enhance error handling and monitoring
-  - [ ] 4.1 Implement Atlas-specific error handling
-    - Add network timeout and connection pool error handling
-    - Implement retry logic for transient connection failures
-    - Add specific error messages for Atlas free tier limitations
-    - _Requirements: 2.6, 5.6_
+- [ ] 4. Create team onboarding and troubleshooting tools
+  - [ ] 4.1 Create comprehensive setup verification system
+    - Build automated setup verification script that checks all prerequisites
+    - Create step-by-step setup guide with verification checkpoints
+    - Add troubleshooting guide for common clone and setup issues
+    - Implement diagnostic tools to identify environment-specific problems
+    - _Requirements: 8.1, 8.3, 8.4_
 
-  - [ ] 4.2 Create health check and monitoring endpoints
-    - Implement database health check API endpoint
-    - Add connection status monitoring functionality
-    - Create basic performance tracking for query response times
-    - _Requirements: 6.4, 5.6_
+  - [ ] 4.2 Create database initialization and seeding tools
+    - Create database initialization script that sets up collections and indexes
+    - Add sample data seeding for development and testing
+    - Implement database reset functionality for clean development starts
+    - Create user account setup tools for team testing
+    - _Requirements: 4.1, 4.2, 7.1_
 
 - [ ]* 4.3 Write integration tests for Atlas connectivity
     - Create test suite for Atlas connection functionality
@@ -122,15 +161,24 @@
     - Create basic application-level performance tracking
     - _Requirements: 5.6, 6.4_
 
-- [ ] 8. Finalize documentation and knowledge transfer
-  - [ ] 8.1 Update project documentation
-    - Update README with Atlas setup instructions
-    - Document new environment variable requirements
-    - Create troubleshooting guide for common Atlas issues
+- [ ] 8. Create clone-ready project documentation and setup
+  - [ ] 8.1 Create comprehensive team setup guide
+    - Write detailed README with step-by-step setup instructions for new team members
+    - Document all environment variable requirements with examples
+    - Create troubleshooting section for common setup issues
+    - Add verification steps to ensure setup is working correctly
     - _Requirements: 8.1, 8.4, 8.3_
 
-  - [ ] 8.2 Create operational procedures
-    - Document database maintenance procedures
-    - Create scaling guidelines for growth scenarios
-    - Write backup and disaster recovery procedures
-    - _Requirements: 8.2, 8.5_
+  - [ ] 8.2 Create automated project setup tools
+    - Create setup script that automates environment configuration
+    - Add package.json scripts for database setup, testing, and verification
+    - Implement pre-commit hooks to validate environment setup
+    - Create development workflow documentation
+    - _Requirements: 8.2, 8.5, 6.2_
+
+  - [ ] 8.3 Add team collaboration safeguards
+    - Implement startup checks that validate all required configurations
+    - Add clear error messages for missing or incorrect environment variables
+    - Create development mode safety checks to prevent production data issues
+    - Document IP whitelisting process for Atlas access
+    - _Requirements: 6.5, 8.3, 4.4_

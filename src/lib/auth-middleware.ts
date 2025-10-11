@@ -1,30 +1,36 @@
-import { NextRequest } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
+// @ts-ignore
 import jwt from 'jsonwebtoken';
+import { AuthService } from '@/lib/services/auth-service';
 
-export interface AuthenticatedRequest extends NextRequest {
-  userId?: string;
-  userEmail?: string;
-}
-
-export function verifyToken(request: NextRequest): { userId: string; userEmail: string } | null {
-  try {
-    const authHeader = request.headers.get('authorization');
-    
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return null;
-    }
-
-    const token = authHeader.substring(7);
-    const decoded = jwt.verify(token, process.env.NEXTAUTH_SECRET || 'fallback-secret') as {
-      userId: string;
-      email: string;
-    };
-
-    return {
-      userId: decoded.userId,
-      userEmail: decoded.email,
-    };
-  } catch (error) {
+export async function authenticateRequest(request: NextRequest) {
+  const authHeader = request.headers.get('authorization');
+  
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
     return null;
   }
+
+  const token = authHeader.substring(7);
+  const payload = AuthService.verifyToken(token);
+  
+  if (!payload) {
+    return null;
+  }
+
+  return payload;
+}
+
+export function withAuth(handler: (request: NextRequest, user: any) => Promise<NextResponse>) {
+  return async (request: NextRequest) => {
+    const user = await authenticateRequest(request);
+    
+    if (!user) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+
+    return handler(request, user);
+  };
 }

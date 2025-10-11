@@ -39,7 +39,7 @@ async function verifyDatabase() {
     const collections = await db.listCollections().toArray();
     const collectionNames = collections.map(c => c.name);
     
-    const expectedCollections = ['users', 'studySessions', 'quizzes', 'quizResults', 'badges', 'userBadges'];
+    const expectedCollections = ['users', 'userstats', 'tasks', 'quiz'];
     for (const expected of expectedCollections) {
       if (collectionNames.includes(expected)) {
         console.log(`✅ Collection '${expected}' exists`);
@@ -52,56 +52,47 @@ async function verifyDatabase() {
     console.log('\n🔍 Testing data integrity...');
     
     const userCount = await db.collection('users').countDocuments();
-    const sessionCount = await db.collection('studySessions').countDocuments();
-    const quizCount = await db.collection('quizzes').countDocuments();
-    const resultCount = await db.collection('quizResults').countDocuments();
-    const badgeCount = await db.collection('badges').countDocuments();
-    const userBadgeCount = await db.collection('userBadges').countDocuments();
+    const userStatsCount = await db.collection('userstats').countDocuments();
+    const taskCount = await db.collection('tasks').countDocuments();
+    const quizCount = await db.collection('quiz').countDocuments();
 
     console.log(`👥 Users: ${userCount}`);
-    console.log(`📚 Study Sessions: ${sessionCount}`);
+    console.log(`📊 User Stats: ${userStatsCount}`);
+    console.log(`📚 Tasks: ${taskCount}`);
     console.log(`❓ Quizzes: ${quizCount}`);
-    console.log(`📊 Quiz Results: ${resultCount}`);
-    console.log(`🏅 Badges: ${badgeCount}`);
-    console.log(`🎖️ User Badges: ${userBadgeCount}`);
 
     // Test 3: Test user progress update
     console.log('\n⚡ Testing user progress updates...');
     
     const testUser = await db.collection('users').findOne({});
     if (testUser) {
-      const originalPoints = testUser.progress?.points || 0;
-      const originalLevel = testUser.progress?.level || 1;
+      const originalPoints = testUser.totalPoints || 0;
       
-      console.log(`Original points: ${originalPoints}, level: ${originalLevel}`);
+      console.log(`Original points: ${originalPoints}`);
       
       // Simulate adding points
       const pointsToAdd = 150;
       const newPoints = originalPoints + pointsToAdd;
-      const newLevel = Math.floor(newPoints / 100) + 1;
       
       await db.collection('users').updateOne(
         { _id: testUser._id },
         {
           $set: {
-            'progress.points': newPoints,
-            'progress.level': newLevel,
-            'progress.lastStudyDate': new Date(),
+            totalPoints: newPoints,
             updatedAt: new Date()
           }
         }
       );
       
       const updatedUser = await db.collection('users').findOne({ _id: testUser._id });
-      console.log(`✅ Updated points: ${updatedUser.progress.points}, level: ${updatedUser.progress.level}`);
+      console.log(`✅ Updated points: ${updatedUser.totalPoints}`);
       
       // Restore original values
       await db.collection('users').updateOne(
         { _id: testUser._id },
         {
           $set: {
-            'progress.points': originalPoints,
-            'progress.level': originalLevel,
+            totalPoints: originalPoints,
             updatedAt: new Date()
           }
         }
@@ -112,32 +103,26 @@ async function verifyDatabase() {
     // Test 4: Test session creation and updates
     console.log('\n📝 Testing session operations...');
     
-    const testSession = {
-      user: testUser._id,
+    const testTask = {
+      userId: testUser._id,
+      sessionId: `test_${Date.now()}`,
       title: "Test Session - Verification",
       status: "pending",
       studyTime: 0,
-      quizScore: 0,
-      totalQuestions: 10,
       pointsEarned: 0,
-      coinsUsed: 0,
-      strengths: [],
-      areasForImprovement: [],
-      recommendations: [],
       createdAt: new Date()
     };
 
-    const sessionResult = await db.collection('studySessions').insertOne(testSession);
+    const taskResult = await db.collection('tasks').insertOne(testTask);
     console.log('✅ Test session created');
 
     // Update session
-    await db.collection('studySessions').updateOne(
-      { _id: sessionResult.insertedId },
+    await db.collection('tasks').updateOne(
+      { _id: taskResult.insertedId },
       {
         $set: {
           status: 'completed',
           studyTime: 1200,
-          quizScore: 85,
           pointsEarned: 100,
           completedAt: new Date(),
           updatedAt: new Date()
@@ -147,16 +132,15 @@ async function verifyDatabase() {
     console.log('✅ Test session updated');
 
     // Clean up test session
-    await db.collection('studySessions').deleteOne({ _id: sessionResult.insertedId });
+    await db.collection('tasks').deleteOne({ _id: taskResult.insertedId });
     console.log('✅ Test session cleaned up');
 
     // Test 5: Test quiz operations
     console.log('\n🧠 Testing quiz operations...');
     
     const testQuiz = {
-      sessionId: new ObjectId(),
-      user: testUser._id,
-      title: "Test Quiz - Verification",
+      sessionId: `test_${Date.now()}`,
+      userId: testUser._id,
       questions: [
         {
           question: "What is 2 + 2?",
@@ -168,16 +152,15 @@ async function verifyDatabase() {
         }
       ],
       totalQuestions: 1,
-      timeLimit: 300,
       createdAt: new Date()
     };
 
-    const quizResult = await db.collection('quizzes').insertOne(testQuiz);
+    const quizResult = await db.collection('quiz').insertOne(testQuiz);
     console.log('✅ Test quiz created');
 
     // Test quiz result submission
     const testQuizResult = {
-      user: testUser._id,
+      userId: testUser._id,
       quizId: quizResult.insertedId,
       sessionId: testQuiz.sessionId,
       answers: [
@@ -193,45 +176,50 @@ async function verifyDatabase() {
       correctAnswers: 1,
       timeSpent: 30,
       pointsEarned: 100,
-      createdAt: new Date()
+      completed: true,
+      createdAt: new Date(),
+      completedAt: new Date()
     };
 
-    const resultResult = await db.collection('quizResults').insertOne(testQuizResult);
+    // Update the quiz with results
+    await db.collection('quiz').updateOne(
+      { _id: quizResult.insertedId },
+      {
+        $set: {
+          answers: testQuizResult.answers,
+          score: testQuizResult.score,
+          correctAnswers: testQuizResult.correctAnswers,
+          timeSpent: testQuizResult.timeSpent,
+          pointsEarned: testQuizResult.pointsEarned,
+          completed: testQuizResult.completed,
+          completedAt: testQuizResult.completedAt
+        }
+      }
+    );
     console.log('✅ Test quiz result created');
 
-    // Clean up test data
-    await db.collection('quizzes').deleteOne({ _id: quizResult.insertedId });
-    await db.collection('quizResults').deleteOne({ _id: resultResult.insertedId });
+    // Clean up test quiz
+    await db.collection('quiz').deleteOne({ _id: quizResult.insertedId });
     console.log('✅ Test quiz data cleaned up');
 
     // Test 6: Test badge system
     console.log('\n🏆 Testing badge system...');
     
-    const badges = await db.collection('badges').find({ isActive: true }).toArray();
-    const userBadges = await db.collection('userBadges').find({ user: testUser._id }).toArray();
+    const badgeCount = await db.collection('badges').countDocuments();
+    console.log(`Available badges: ${badgeCount}`);
     
-    console.log(`Available badges: ${badges.length}`);
-    console.log(`User badges: ${userBadges.length}`);
-    
-    for (const userBadge of userBadges) {
-      const badge = badges.find(b => b._id.toString() === userBadge.badge.toString());
-      if (badge) {
-        console.log(`🎖️ User has badge: ${badge.name}`);
-      }
-    }
-
     // Test 7: Test aggregation queries
     console.log('\n📊 Testing aggregation queries...');
     
-    const userStats = await db.collection('studySessions').aggregate([
-      { $match: { user: testUser._id } },
+    // Test user statistics aggregation
+    const userStats = await db.collection('userstats').aggregate([
       {
         $group: {
           _id: null,
-          totalSessions: { $sum: 1 },
-          totalStudyTime: { $sum: '$studyTime' },
-          avgQuizScore: { $avg: '$quizScore' },
-          totalPoints: { $sum: '$pointsEarned' }
+          totalUsers: { $sum: 1 },
+          avgPoints: { $avg: "$points" },
+          maxPoints: { $max: "$points" },
+          totalStudyTime: { $sum: "$totalStudyTime" }
         }
       }
     ]).toArray();
@@ -239,14 +227,15 @@ async function verifyDatabase() {
     if (userStats.length > 0) {
       const stats = userStats[0];
       console.log(`📈 User Statistics:`);
-      console.log(`   Total Sessions: ${stats.totalSessions}`);
+      console.log(`   Total Users: ${stats.totalUsers}`);
+      console.log(`   Average Points: ${stats.avgPoints?.toFixed(1) || 0}`);
+      console.log(`   Max Points: ${stats.maxPoints}`);
       console.log(`   Total Study Time: ${stats.totalStudyTime} seconds`);
-      console.log(`   Average Quiz Score: ${stats.avgQuizScore?.toFixed(1) || 0}%`);
-      console.log(`   Total Points Earned: ${stats.totalPoints}`);
     }
 
     console.log('\n🎉 All database verification tests passed!');
     console.log('\n✅ Database is ready for production use');
+    
     console.log('\nFeatures verified:');
     console.log('• Collection schemas and validation');
     console.log('• Data integrity and relationships');

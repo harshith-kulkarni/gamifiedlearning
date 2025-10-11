@@ -91,7 +91,7 @@ interface GamificationContextType {
 const GamificationContext = createContext<GamificationContextType | undefined>(undefined);
 
 export function GamificationProvider({ children }: { children: ReactNode }) {
-  const { user } = useAuth();
+  const { user, getValidToken } = useAuth();
   const [points, setPoints] = useState(0);
   const [level, setLevel] = useState(1);
   const [streak, setStreak] = useState(0);
@@ -99,8 +99,8 @@ export function GamificationProvider({ children }: { children: ReactNode }) {
   const [dailyProgress, setDailyProgress] = useState(0);
   const [totalStudyTime, setTotalStudyTime] = useState(0);
   
-  // Initialize badges
-  const [badges, setBadges] = useState<Badge[]>([
+  // Initialize badges with default values
+  const defaultBadges: Badge[] = [
     { id: 'first-quiz', name: 'First Quiz', description: 'Complete your first quiz', icon: '🎓', earned: false, rarity: 'common' },
     { id: 'streak-7', name: 'Week Streak', description: 'Study for 7 days in a row', icon: '🔥', earned: false, rarity: 'rare' },
     { id: 'points-100', name: 'Centurion', description: 'Earn 100 points', icon: '💯', earned: false, rarity: 'common' },
@@ -109,7 +109,9 @@ export function GamificationProvider({ children }: { children: ReactNode }) {
     { id: 'night-owl', name: 'Night Owl', description: 'Study after 10 PM', icon: '🦉', earned: false, rarity: 'common' },
     { id: 'speed-demon', name: 'Speed Demon', description: 'Finish a quiz in under 5 minutes', icon: '⚡', earned: false, rarity: 'epic' },
     { id: 'scholar', name: 'Scholar', description: 'Complete 10 quizzes', icon: '📚', earned: false, rarity: 'epic' },
-  ]);
+  ];
+  
+  const [badges, setBadges] = useState<Badge[]>(defaultBadges);
   
   // Initialize power-ups
   const [powerUps, setPowerUps] = useState<PowerUp[]>([
@@ -119,13 +121,15 @@ export function GamificationProvider({ children }: { children: ReactNode }) {
     { id: 'focus-mode', name: 'Focus Mode', description: 'Eliminate distractions for 1 hour', icon: '🎯', active: false, duration: 3600 },
   ]);
   
-  // Initialize quests
-  const [quests, setQuests] = useState<Quest[]>([
+  // Initialize quests with default values
+  const defaultQuests: Quest[] = [
     { id: 'study-60', name: 'Hour Master', description: 'Study for 60 minutes total', icon: '⏱️', progress: 0, target: 60, reward: 50, completed: false, category: 'study' },
     { id: 'quiz-5', name: 'Quiz Master', description: 'Complete 5 quizzes', icon: '📝', progress: 0, target: 5, reward: 75, completed: false, category: 'quiz' },
     { id: 'ai-chat-10', name: 'Chat Champion', description: 'Ask 10 questions to AI tutor', icon: '💬', progress: 0, target: 10, reward: 40, completed: false, category: 'ai' },
     { id: 'streak-30', name: 'Monthly Streak', description: 'Maintain a 30-day study streak', icon: '📅', progress: 0, target: 30, reward: 150, completed: false, category: 'consistency' },
-  ]);
+  ];
+  
+  const [quests, setQuests] = useState<Quest[]>(defaultQuests);
   
   // Initialize challenges
   const [challenges, setChallenges] = useState<Challenge[]>([
@@ -135,65 +139,128 @@ export function GamificationProvider({ children }: { children: ReactNode }) {
     { id: 'early-riser', name: 'Early Riser', description: 'Start studying before 6 AM', icon: '🌅', reward: 25, completed: false, difficulty: 'easy' },
   ]);
   
-  // Initialize achievements
-  const [achievements, setAchievements] = useState<Achievement[]>([
+  // Initialize achievements with default values
+  const defaultAchievements: Achievement[] = [
     { id: 'first-session', name: 'First Session', description: 'Complete your first study session', icon: '🎯', earned: false, points: 10 },
     { id: 'marathon-study', name: 'Marathon Study', description: 'Study for 2 hours in one session', icon: '🏃', earned: false, points: 50 },
     { id: 'consistent-week', name: 'Consistent Week', description: 'Study every day for a week', icon: '📅', earned: false, points: 75 },
     { id: 'quiz-expert', name: 'Quiz Expert', description: 'Score 90% or higher on 5 quizzes', icon: '📝', earned: false, points: 100 },
-  ]);
+  ];
+  
+  const [achievements, setAchievements] = useState<Achievement[]>(defaultAchievements);
 
   // Sync with database when user changes
   useEffect(() => {
-    if (user) {
-      setPoints(user.progress.points);
-      setLevel(user.progress.level);
-      setStreak(user.progress.streak);
-      setTotalStudyTime(user.progress.totalStudyTime);
-      setDailyGoal(user.progress.dailyGoal);
-      setBadges(user.progress.badges);
-      setQuests(user.progress.quests);
-      setAchievements(user.progress.achievements);
+    if (user && user.progress) {
+      setPoints(user.progress.points || 0);
+      setLevel(user.progress.level || 1);
+      setStreak(user.progress.streak || 0);
+      setTotalStudyTime(user.progress.totalStudyTime || 0);
+      setDailyGoal(user.progress.dailyGoal || 30);
+      setBadges(user.progress.badges || defaultBadges);
+      setQuests(user.progress.quests || defaultQuests);
+      setAchievements(user.progress.achievements || defaultAchievements);
       
       // Calculate daily progress (today's study time)
-      const today = new Date().toISOString().split('T')[0];
-      const todaysSessions = user.progress.studySessions.filter(
-        session => session.completedAt.toString().split('T')[0] === today
-      );
-      const todaysTime = todaysSessions.reduce((total, session) => total + session.duration, 0);
-      setDailyProgress(Math.min(todaysTime, dailyGoal));
+      if (user.progress.studySessions) {
+        const today = new Date().toISOString().split('T')[0];
+        const todaysSessions = user.progress.studySessions.filter(
+          session => session.completedAt && session.completedAt.toString().split('T')[0] === today
+        );
+        const todaysTime = todaysSessions.reduce((total, session) => total + (session.duration || 0), 0);
+        setDailyProgress(Math.min(todaysTime, user.progress.dailyGoal || 30));
+      }
     }
-  }, [user, dailyGoal]);
+  }, [user]);
 
   // Sync progress to database
   const syncToDatabase = useCallback(async () => {
-    if (!user) return;
+    if (!user || !user.progress) return;
     
     try {
-      const token = localStorage.getItem('auth-token');
-      if (!token) return;
+      const token = getValidToken();
+      if (!token) {
+        console.warn('No valid auth token found, cannot sync progress');
+        return;
+      }
 
-      await fetch('/api/user/progress', {
+      // Format data according to database schema
+      const progressData = {
+        points: Math.floor(points),
+        level: Math.floor(level),
+        streak: Math.floor(streak),
+        totalStudyTime: Math.floor(totalStudyTime),
+        dailyGoal: Math.floor(dailyGoal),
+        // Format badges according to schema
+        badges: badges.map(badge => ({
+          id: badge.id,
+          name: badge.name,
+          description: badge.description,
+          icon: badge.icon,
+          earned: !!badge.earned,
+          ...(badge.earnedAt && { earnedAt: new Date(badge.earnedAt) }),
+          ...(badge.rarity && { rarity: badge.rarity })
+        })),
+        // Format quests according to schema
+        quests: quests.map(quest => ({
+          id: quest.id,
+          name: quest.name,
+          description: quest.description,
+          icon: quest.icon,
+          progress: Math.floor(quest.progress || 0),
+          target: Math.floor(quest.target || 1),
+          reward: Math.floor(quest.reward || 0),
+          completed: !!quest.completed,
+          ...(quest.completedAt && { completedAt: new Date(quest.completedAt) }),
+          ...(quest.category && { category: quest.category })
+        })),
+        // Format achievements according to schema
+        achievements: achievements.map(achievement => ({
+          id: achievement.id,
+          name: achievement.name,
+          description: achievement.description,
+          icon: achievement.icon,
+          earned: !!achievement.earned,
+          ...(achievement.earnedAt && { earnedAt: new Date(achievement.earnedAt) }),
+          points: Math.floor(achievement.points || 0)
+        })),
+        lastStudyDate: new Date(),
+        createdAt: new Date(),
+        updatedAt: new Date()
+      };
+
+      console.log('Syncing progress to database:', progressData);
+
+      const response = await fetch('/api/user/progress', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
         },
-        body: JSON.stringify({
-          points,
-          level,
-          streak,
-          totalStudyTime,
-          dailyGoal,
-          badges,
-          quests,
-          achievements,
-        }),
+        body: JSON.stringify(progressData),
       });
+
+      if (!response.ok) {
+        const errorData = await response.text();
+        console.error('Failed to sync progress:', response.status, errorData);
+      } else {
+        console.log('Progress synced successfully');
+      }
     } catch (error) {
-      console.error('Failed to sync progress:', error);
+      console.error('Error syncing progress:', error);
     }
   }, [user, points, level, streak, totalStudyTime, dailyGoal, badges, quests, achievements]);
+
+  // Auto-sync progress when important data changes
+  useEffect(() => {
+    if (user && user.progress && points >= 0) {
+      const timeoutId = setTimeout(() => {
+        syncToDatabase();
+      }, 1000); // Debounce sync calls
+
+      return () => clearTimeout(timeoutId);
+    }
+  }, [user, points, level, streak, totalStudyTime, badges, quests, achievements, syncToDatabase]);
 
   // Level calculation based on points - NEW SYSTEM
   // Level 1: 100 points, Level 2: 150 points, Level 3: 200 points (+50 for each level)
