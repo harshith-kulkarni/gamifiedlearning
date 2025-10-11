@@ -1,54 +1,61 @@
-# Technology Stack
+# Technology Stack & Build System
 
-## Framework & Runtime
-- **Next.js 15.3.3**: React framework with App Router, Server Components, and Turbopack
-- **React 18**: UI library with hooks and context patterns
-- **TypeScript 5**: Strict typing with path aliases (`@/*` for `./src/*`)
-- **Node.js**: Runtime environment
+## Core Technologies
+- **Frontend**: Next.js 15 (App Router), React 18, TypeScript
+- **Backend**: Next.js API Routes
+- **Database**: MongoDB Atlas with connection pooling
+- **AI**: Google Genkit AI framework with Gemini API
+- **Authentication**: Custom JWT-based system with bcrypt
+- **Styling**: Tailwind CSS with CSS variables for theming
 
-## AI & Backend Services
-- **Google Genkit**: AI framework for building AI-powered applications
-- **Google Gemini 2.5 Flash**: Primary AI model for content generation and Q&A
-- **MongoDB**: Database for user data, progress tracking, and session storage
-- **NextAuth.js**: Authentication with JWT tokens and MongoDB adapter
+## UI Framework
+- **Component Library**: Radix UI primitives + shadcn/ui components
+- **Icons**: Lucide React
+- **Styling**: Tailwind CSS with custom design system
+- **Animations**: tailwindcss-animate plugin
+- **Theme**: CSS variables with dark mode support
 
-## UI & Styling
-- **Tailwind CSS**: Utility-first CSS framework with custom design system
-- **Shadcn/ui**: Component library built on Radix UI primitives
-- **Radix UI**: Headless UI components for accessibility
-- **Lucide React**: Icon library
-- **CSS Variables**: HSL-based color system with dark mode support
+## Key Dependencies
+- **Forms**: React Hook Form with Zod validation
+- **State Management**: React Context API
+- **Charts**: Recharts for analytics
+- **Date Handling**: date-fns
+- **PDF Processing**: pdf-parse for document handling
+- **Carousel**: Embla Carousel React
 
-## Form Handling & Validation
-- **React Hook Form**: Form state management
-- **Zod**: Schema validation and type safety
-- **Hookform Resolvers**: Integration between React Hook Form and Zod
-
-## Development Tools
-- **ESLint**: Code linting (build errors ignored in config)
-- **PostCSS**: CSS processing
-- **Patch Package**: For maintaining package patches
+## Development Configuration
+- **TypeScript**: Strict mode enabled, ES2017 target
+- **ESLint**: Next.js config with build error ignoring
+- **Path Aliases**: `@/*` maps to `./src/*`
+- **Port**: Development server runs on port 9003
 
 ## Common Commands
 
+### Development
 ```bash
-# Development
-npm run dev                 # Start dev server with Turbopack on port 3000
-npm run genkit:dev         # Start Genkit development server
-npm run genkit:watch       # Start Genkit with file watching
-
-# Build & Deploy
-npm run build              # Production build
-npm run start              # Start production server
-npm run typecheck          # TypeScript type checking
-npm run lint               # ESLint code linting
-
-# Database Setup
-# See setup-mongodb.md for MongoDB installation options
+npm run dev              # Start development server (port 9003)
+npm run build           # Build for production
+npm run start           # Start production server
+npm run lint            # Run ESLint
 ```
 
-## Environment Variables Required
-- `MONGODB_URI`: MongoDB connection string
-- `NEXTAUTH_SECRET`: JWT signing secret
-- `NEXTAUTH_URL`: Application URL for auth callbacks
-- `GEMINI_API_KEY`: Google AI API key
+### Database & Setup
+```bash
+npm run setup:db        # Initialize database collections and indexes
+npm run test:connection # Test MongoDB Atlas connection
+npm run clean-install   # Clean dependency installation
+```
+
+### Testing & Debugging
+```bash
+npm run test:login      # Test authentication functionality
+node scripts/fix-user-passwords.js  # Fix test user passwords
+node scripts/verify-database.js     # Verify database setup
+```
+
+## Build Optimizations
+- **Webpack**: Top-level await enabled
+- **Images**: Next.js Image optimization with remote patterns
+- **Compression**: Enabled for production builds
+- **TypeScript**: Build errors ignored for faster development
+- **Connection Pooling**: MongoDB Atlas optimized for free tier (max 10 connections)

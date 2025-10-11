@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useMemo, useCallback } from "react";
 import Link from "next/link";
-import { PlusCircle, Star, CheckCircle, Package, Trophy, Zap, Flame, Target } from "lucide-react";
+import { PlusCircle, Star, CheckCircle, Package, Trophy, Zap, Flame, Target, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -24,6 +24,7 @@ import { useStudySession } from "@/contexts/study-session-context";
 import { useGamification } from "@/contexts/gamification-context";
 import { GamificationDashboard } from "@/components/gamification/gamification-dashboard";
 import { ErrorBoundary } from "@/components/error-boundary";
+import { SyncStatus } from "@/components/dashboard/sync-status";
 
 // Task interface matching the data structure
 interface Task {
@@ -42,64 +43,86 @@ const generateUniqueId = (prefix: string, index: number) => {
 export default function DashboardPage() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [lastRefresh, setLastRefresh] = useState(Date.now());
   const { completedSessions } = useStudySession();
-  const { points, level, streak, badges, quests, challenges } = useGamification();
+  const { points, level, streak, badges, quests, challenges, fetchLatestProgress } = useGamification();
 
-  // Fetch real tasks from database
-  useEffect(() => {
-    const fetchTasks = async () => {
-      try {
-        const token = localStorage.getItem('auth-token');
-        if (!token) {
-          setIsLoading(false);
-          return;
-        }
+  // Real-time fetch tasks from database with auto-refresh
+  const fetchTasks = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      const token = localStorage.getItem('auth-token');
+      if (!token) {
+        setIsLoading(false);
+        return;
+      }
 
-        const response = await fetch('/api/user/study-session', {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-          },
-        });
+      // Fetch latest progress first
+      await fetchLatestProgress();
 
-        if (response.ok) {
-          const data = await response.json();
-          const formattedTasks = data.sessions.map((session: any, index: number) => ({
-            id: session.sessionId || generateUniqueId('api_session', index),
-            title: session.taskName || 'Study Session',
-            status: 'Completed' as const,
-            date: session.date,
-            points: session.points,
-          }));
-          setTasks(formattedTasks);
-        } else {
-          // Fallback to local sessions if API fails
-          const formattedTasks = completedSessions.map((session, index) => ({
-            id: session.id || generateUniqueId('local_session', index),
-            title: session.taskName,
-            status: 'Completed' as const,
-            date: new Date().toISOString().split('T')[0],
-            points: session.points,
-          }));
-          setTasks(formattedTasks);
-        }
-      } catch (error) {
-        console.error('Failed to fetch tasks:', error);
-        // Fallback to local sessions
+      const response = await fetch('/api/user/study-session', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const formattedTasks = data.sessions.map((session: any, index: number) => ({
+          id: session.sessionId || generateUniqueId('api_session', index),
+          title: session.taskName || 'Study Session',
+          status: 'Completed' as const,
+          date: session.date,
+          points: session.points,
+        }));
+        setTasks(formattedTasks);
+        console.log('✅ Dashboard data refreshed from database');
+      } else {
+        // Fallback to local sessions if API fails
         const formattedTasks = completedSessions.map((session, index) => ({
-          id: session.id || generateUniqueId('fallback_session', index),
+          id: session.id || generateUniqueId('local_session', index),
           title: session.taskName,
           status: 'Completed' as const,
           date: new Date().toISOString().split('T')[0],
           points: session.points,
         }));
         setTasks(formattedTasks);
-      } finally {
-        setIsLoading(false);
       }
-    };
+    } catch (error) {
+      console.error('Failed to fetch tasks:', error);
+      // Fallback to local sessions
+      const formattedTasks = completedSessions.map((session, index) => ({
+        id: session.id || generateUniqueId('fallback_session', index),
+        title: session.taskName,
+        status: 'Completed' as const,
+        date: new Date().toISOString().split('T')[0],
+        points: session.points,
+      }));
+      setTasks(formattedTasks);
+    } finally {
+      setIsLoading(false);
+      setLastRefresh(Date.now());
+    }
+  }, [completedSessions, fetchLatestProgress]);
 
+  // Initial fetch and auto-refresh
+  useEffect(() => {
     fetchTasks();
-  }, [completedSessions]);
+  }, [fetchTasks]);
+
+  // Auto-refresh when new sessions are completed
+  useEffect(() => {
+    fetchTasks();
+  }, [completedSessions.length, fetchTasks]);
+
+  // Periodic refresh every 30 seconds for real-time updates
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetchTasks();
+    }, 30000);
+
+    return () => clearInterval(interval);
+  }, [fetchTasks]);
   
   // Memoize calculations
   const totalPoints = useMemo(() => tasks.reduce((acc, task) => acc + task.points, 0), [tasks]);
@@ -172,10 +195,27 @@ export default function DashboardPage() {
 
       <Card className="gamify-card">
         <CardHeader className="px-7">
-          <CardTitle>Your Tasks</CardTitle>
-          <CardDescription>
-            An overview of your completed study sessions.
-          </CardDescription>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle>Your Tasks</CardTitle>
+              <CardDescription>
+                An overview of your completed study sessions.
+              </CardDescription>
+              <div className="mt-2">
+                <SyncStatus />
+              </div>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={fetchTasks}
+              disabled={isLoading}
+              className="flex items-center gap-2"
+            >
+              <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+              Refresh
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           <Table>

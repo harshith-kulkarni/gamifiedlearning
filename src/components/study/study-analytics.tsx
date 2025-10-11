@@ -1,56 +1,16 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
 import { useAuth } from '@/contexts/auth-context';
-
-interface StudySessionData {
-  date: string;
-  duration: number;
-  score: number;
-  points: number;
-}
+import { useStudyData } from '@/hooks/use-study-data';
 
 export function StudyAnalytics() {
   const { user } = useAuth();
-  const [sessionData, setSessionData] = useState<StudySessionData[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    const fetchSessionData = async () => {
-      if (!user) return;
-
-      try {
-        const token = localStorage.getItem('auth-token');
-        if (!token) {
-          setIsLoading(false);
-          return;
-        }
-
-        const response = await fetch('/api/user/study-session', {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-          },
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          setSessionData(data.sessions || []);
-        } else {
-          console.error('Failed to fetch session data:', response.status);
-          setSessionData([]);
-        }
-      } catch (error) {
-        console.error('Failed to fetch session data:', error);
-        setSessionData([]);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchSessionData();
-  }, [user]);
+  const { sessionData, isLoading, getStats } = useStudyData();
+  
+  // Get statistics using the shared hook
+  const stats = getStats();
 
   if (isLoading) {
     return (
@@ -75,11 +35,7 @@ export function StudyAnalytics() {
     );
   }
 
-  const totalStudyTime = sessionData.reduce((total, session) => total + session.duration, 0);
-  const averageScore = sessionData.length > 0 
-    ? sessionData.reduce((total, session) => total + session.score, 0) / sessionData.length 
-    : 0;
-  const totalPoints = sessionData.reduce((total, session) => total + session.points, 0);
+  const { totalStudyTime, averageScore, totalPoints, totalSessions } = stats;
 
   // Group sessions by date for better visualization
   const groupedData = sessionData.reduce((acc, session) => {
@@ -121,7 +77,7 @@ export function StudyAnalytics() {
           <CardContent>
             <div className="text-2xl font-bold">{Math.floor(totalStudyTime / 60)}h {totalStudyTime % 60}m</div>
             <p className="text-xs text-muted-foreground">
-              Across {sessionData.length} sessions
+              Across {totalSessions} sessions
             </p>
           </CardContent>
         </Card>
@@ -229,7 +185,7 @@ export function StudyAnalytics() {
         <CardHeader>
           <CardTitle>Recent Study Sessions</CardTitle>
           <CardDescription>
-            Your latest study activities
+            Your latest study activities • Data synchronized with Progress tab
           </CardDescription>
         </CardHeader>
         <CardContent>

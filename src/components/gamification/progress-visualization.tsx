@@ -1,8 +1,10 @@
 'use client';
 
 import { useGamification } from '@/contexts/gamification-context';
+import { useStudyData } from '@/hooks/use-study-data';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
+import { Button } from '@/components/ui/button';
 import { 
   TrendingUp, 
   Clock, 
@@ -10,23 +12,18 @@ import {
   Trophy,
   Zap,
   Star,
-  Flame
+  Flame,
+  RefreshCw
 } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 export function ProgressVisualization() {
   const { points, level, streak, dailyGoal, dailyProgress, totalStudyTime, quests, challenges } = useGamification();
+  const { getTrendData, getStats, isLoading, fetchSessionData } = useStudyData();
 
-  // Mock data for study time trend (in a real app, this would come from a database)
-  const studyData = [
-    { day: 'Mon', minutes: 45 },
-    { day: 'Tue', minutes: 30 },
-    { day: 'Wed', minutes: 60 },
-    { day: 'Thu', minutes: 40 },
-    { day: 'Fri', minutes: 75 },
-    { day: 'Sat', minutes: 90 },
-    { day: 'Sun', minutes: 60 },
-  ];
+  // Get real study time trend data (last 7 days)
+  const studyTrendData = getTrendData(7);
+  const stats = getStats();
 
   // Calculate completion rates
   const completedQuests = quests.filter(q => q.completed).length;
@@ -92,35 +89,92 @@ export function ProgressVisualization() {
         </Card>
       </div>
 
-      {/* Study Time Trend */}
+      {/* Study Time Trend - Real Data */}
       <Card className="gamify-card">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <TrendingUp className="h-5 w-5" />
-            Study Time Trend
-          </CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center gap-2">
+              <TrendingUp className="h-5 w-5" />
+              Study Time Trend (Last 7 Days)
+            </CardTitle>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => fetchSessionData(true)}
+              disabled={isLoading}
+              className="flex items-center gap-2"
+            >
+              <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+              Refresh
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart
-                data={studyData}
-                margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
-              >
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="day" />
-                <YAxis />
-                <Tooltip />
-                <Area 
-                  type="monotone" 
-                  dataKey="minutes" 
-                  stroke="#673AB7" 
-                  fill="#673AB7" 
-                  fillOpacity={0.2} 
-                  activeDot={{ r: 8 }} 
-                />
-              </AreaChart>
-            </ResponsiveContainer>
+          {isLoading ? (
+            <div className="h-64 flex items-center justify-center">
+              <div className="animate-pulse text-muted-foreground">Loading study data...</div>
+            </div>
+          ) : studyTrendData.length > 0 ? (
+            <div className="h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart
+                  data={studyTrendData}
+                  margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="date" />
+                  <YAxis />
+                  <Tooltip 
+                    formatter={(value: number, name: string) => [
+                      `${value} minutes`, 
+                      name === 'minutes' ? 'Study Time' : name
+                    ]}
+                    labelFormatter={(label) => `Day: ${label}`}
+                  />
+                  <Area 
+                    type="monotone" 
+                    dataKey="minutes" 
+                    stroke="#673AB7" 
+                    fill="#673AB7" 
+                    fillOpacity={0.2} 
+                    activeDot={{ r: 8 }} 
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          ) : (
+            <div className="h-64 flex items-center justify-center">
+              <div className="text-center text-muted-foreground">
+                <Clock className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                <p>No study sessions yet</p>
+                <p className="text-sm">Start studying to see your progress!</p>
+              </div>
+            </div>
+          )}
+          
+          {/* Study Statistics Summary - Synchronized with Analytics */}
+          <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-4 pt-4 border-t">
+            <div className="text-center">
+              <p className="text-sm text-muted-foreground">Total Time</p>
+              <p className="text-lg font-semibold">{Math.floor(stats.totalStudyTime / 60)}h {stats.totalStudyTime % 60}m</p>
+            </div>
+            <div className="text-center">
+              <p className="text-sm text-muted-foreground">Sessions</p>
+              <p className="text-lg font-semibold">{stats.totalSessions}</p>
+            </div>
+            <div className="text-center">
+              <p className="text-sm text-muted-foreground">Avg Score</p>
+              <p className="text-lg font-semibold">{stats.averageScore.toFixed(1)}%</p>
+            </div>
+            <div className="text-center">
+              <p className="text-sm text-muted-foreground">Today</p>
+              <p className="text-lg font-semibold">{stats.todaysStudyTime}m</p>
+            </div>
+          </div>
+          
+          {/* Data Sync Indicator */}
+          <div className="mt-2 text-xs text-muted-foreground text-center">
+            📊 Data synchronized with Analytics section • Real-time updates every 30s
           </div>
         </CardContent>
       </Card>

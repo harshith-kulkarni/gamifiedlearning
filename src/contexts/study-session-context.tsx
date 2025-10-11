@@ -88,7 +88,7 @@ export function StudySessionProvider({ children }: { children: ReactNode }) {
     const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
     
     // Integrate with gamification system
-    const { addPoints, incrementStreak, checkQuestProgress, powerUps, addStudyTime } = useGamification();
+    const { addStudySessionPoints, incrementStreak, checkQuestProgress, powerUps, addStudyTime } = useGamification();
 
     // Load completed sessions from localStorage on initial client-side render
     useEffect(() => {
@@ -162,16 +162,14 @@ export function StudySessionProvider({ children }: { children: ReactNode }) {
             return false; // Cannot use more than 3 coins
         }
         setCoinsUsed((prev: number) => prev + 1);
-        // Gamification: Answer reveal penalty
-        addPoints(-10); // -10 points for revealing answer
+        // Gamification: Answer reveal penalty - handled in quiz points calculation
         return true;
-    }, [coinsUsed, addPoints]);
+    }, [coinsUsed]);
     
     const addPenalty = useCallback((points: number) => {
         setPenaltyPoints((prev: number) => prev + points);
-        // Gamification: Penalties affect points
-        addPoints(-points);
-    }, [addPoints]);
+        // Gamification: Penalties handled in session completion
+    }, []);
 
     const addCompletedSession = useCallback(async (session: CompletedSession) => {
         if (!user) {
@@ -200,15 +198,15 @@ export function StudySessionProvider({ children }: { children: ReactNode }) {
                 }
 
                 const sessionData = {
-                    id: session.id,
-                    taskName: session.taskName,
-                    duration: studyTimeInMinutes, // Convert to minutes
-                    score: 85, // Default score, should be calculated from quiz
-                    points: session.points,
-                    quizAnswers: quizAnswers.map((qa: QuizAnswer) => ({
-                        questionIndex: qa.questionIndex,
-                        answer: qa.answer,
-                        correct: true // This should be calculated based on correct answers
+                    id: session.id || `session_${Date.now()}`,
+                    taskName: session.taskName || 'Study Session',
+                    duration: Math.max(1, Math.floor(studyTimeInMinutes)), // Ensure positive integer
+                    score: Math.max(0, Math.min(100, Math.floor(session.score || 85))), // Ensure valid score 0-100
+                    points: Math.floor(session.points || 0), // Ensure integer
+                    quizAnswers: (quizAnswers || []).map((qa: QuizAnswer) => ({
+                        questionIndex: Math.floor(qa.questionIndex || 0),
+                        answer: String(qa.answer || ''),
+                        correct: Boolean(qa.correct || false)
                     }))
                 };
 
@@ -248,10 +246,9 @@ export function StudySessionProvider({ children }: { children: ReactNode }) {
         // Save in background without blocking UI
         saveToDatabase();
         
-        // Gamification: Add points for completing session
-        // If session completed successfully then time in minutes * 5 points to be added
-        const pointsEarned = studyTimeInMinutes * 5;
-        addPoints(pointsEarned);
+        // Gamification: Add points for completing session using new system
+        const has2xPowerUp = powerUps.some(p => p.id === 'double-points' && p.active);
+        const pointsEarned = addStudySessionPoints(studyTimeInMinutes, true, has2xPowerUp);
         
         // Update quest progress
         checkQuestProgress('quiz-5', 1);
@@ -262,7 +259,7 @@ export function StudySessionProvider({ children }: { children: ReactNode }) {
         
         // Add study time to total
         addStudyTime(studyTimeInMinutes);
-    }, [user, studyDuration, quizAnswers, addPoints, checkQuestProgress, incrementStreak, addStudyTime]);
+    }, [user, studyDuration, quizAnswers, addStudySessionPoints, checkQuestProgress, incrementStreak, addStudyTime, powerUps]);
 
     // Sync timer duration with study duration
     useEffect(() => {

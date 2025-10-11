@@ -1,93 +1,75 @@
-# Project Structure & Organization
+# Project Structure & Architecture
 
-## Root Directory
+## Directory Organization
+
 ```
-├── .env.example              # Environment variables template
-├── .kiro/                    # Kiro AI assistant configuration
-├── components.json           # Shadcn/ui component configuration
-├── next.config.ts           # Next.js configuration
-├── package.json             # Dependencies and scripts
-├── tailwind.config.ts       # Tailwind CSS configuration
-├── tsconfig.json            # TypeScript configuration
-└── src/                     # Source code
+gamified-learning-platform/
+├── src/
+│   ├── app/                 # Next.js App Router (pages & layouts)
+│   │   ├── api/            # API routes for backend functionality
+│   │   ├── dashboard/      # Dashboard pages and components
+│   │   ├── signup/         # Authentication pages
+│   │   └── actions/        # Server actions
+│   ├── components/         # Reusable UI components
+│   │   ├── auth/          # Authentication-related components
+│   │   ├── gamification/  # Gamification UI (badges, progress, etc.)
+│   │   ├── layout/        # Layout components (header, sidebar, etc.)
+│   │   ├── study/         # Study session components
+│   │   └── ui/            # Base UI components (shadcn/ui)
+│   ├── contexts/          # React Context providers
+│   ├── hooks/             # Custom React hooks
+│   ├── lib/               # Business logic and utilities
+│   │   ├── models/        # TypeScript interfaces and data models
+│   │   ├── services/      # Database and external API services
+│   │   └── utils/         # Utility functions
+│   └── ai/                # AI flows and Genkit configuration
+├── scripts/               # Setup and maintenance scripts
+└── public/               # Static assets
 ```
 
-## Source Structure (`src/`)
+## Architecture Patterns
 
-### Application Layer (`src/app/`)
-- **App Router**: Next.js 13+ file-based routing
-- **layout.tsx**: Root layout with providers and global styles
-- **page.tsx**: Route pages following Next.js conventions
-- **api/**: API routes for backend functionality
-- **actions/**: Server actions for form handling
-- **globals.css**: Global styles and CSS variables
+### Component Organization
+- **UI Components**: Located in `src/components/ui/` (shadcn/ui based)
+- **Feature Components**: Organized by domain (`auth/`, `gamification/`, `study/`)
+- **Layout Components**: Shared layout elements in `src/components/layout/`
+- **Page Components**: App Router pages in `src/app/`
 
-### Components (`src/components/`)
-- **ui/**: Shadcn/ui components (Button, Input, Dialog, etc.)
-- **auth/**: Authentication-related components
-- **gamification/**: Badges, progress bars, achievement components
-- **study/**: Study session and quiz components
-- **layout/**: Navigation, headers, sidebars
-- **icons.tsx**: Custom icon components
+### State Management
+- **Global State**: React Context API (`src/contexts/`)
+- **Local State**: React useState and useReducer hooks
+- **Server State**: Next.js API routes with client-side fetching
 
-### Business Logic (`src/lib/`)
-- **models/**: TypeScript interfaces and data models
-- **services/**: Business logic and external API integrations
-- **mongodb.ts**: Database connection and configuration
-- **utils.ts**: Utility functions (cn for className merging)
-- **auth-middleware.ts**: Authentication middleware
-- **pdf-utils.ts**: PDF processing utilities
+### Data Layer
+- **Models**: TypeScript interfaces in `src/lib/models/`
+- **Services**: Database operations in `src/lib/services/`
+- **Database**: MongoDB connection and utilities in `src/lib/mongodb.ts`
 
-### State Management (`src/contexts/`)
-- **auth-context.tsx**: User authentication state
-- **gamification-context.tsx**: Points, badges, achievements
-- **study-session-context.tsx**: Study session state
+### Authentication Flow
+- **JWT-based**: Custom implementation with localStorage
+- **Context Provider**: `AuthContext` for global auth state
+- **Middleware**: Route protection in `src/lib/auth-middleware.ts`
 
-### Custom Hooks (`src/hooks/`)
-- **use-toast.ts**: Toast notification hook
-- **use-mobile.tsx**: Mobile device detection
-- **use-ai-cache.ts**: AI response caching
-
-### AI Integration (`src/ai/`)
-- **genkit.ts**: Google Genkit configuration
-- **flows/**: AI workflow definitions
-- **dev.ts**: Development server for AI testing
-
-## Naming Conventions
-
-### Files & Folders
-- **kebab-case**: For file names (`auth-context.tsx`, `study-session.tsx`)
-- **PascalCase**: For React components (`AuthProvider`, `StudySession`)
-- **camelCase**: For functions and variables (`getUserProgress`, `isLoading`)
-
-### Components
-- **Functional Components**: Use arrow functions with TypeScript
-- **Props Interfaces**: Named with component name + `Props` suffix
-- **Context Providers**: End with `Provider` suffix
-
-### API Routes
-- **RESTful**: Follow REST conventions (`/api/auth/login`, `/api/user/progress`)
-- **HTTP Methods**: GET for reading, POST for creating, PUT for updating
+## File Naming Conventions
+- **Components**: PascalCase (e.g., `UserProfile.tsx`)
+- **Pages**: kebab-case (e.g., `user-dashboard/`)
+- **Utilities**: kebab-case (e.g., `database-utils.ts`)
+- **Contexts**: kebab-case with suffix (e.g., `auth-context.tsx`)
+- **Hooks**: camelCase with `use` prefix (e.g., `useAuth.ts`)
 
 ## Import Patterns
+- **Path Aliases**: Use `@/` for all internal imports
+- **Relative Imports**: Avoid deep relative paths, prefer aliases
+- **Component Imports**: Import from `@/components/ui` for base components
 
-### Path Aliases
-```typescript
-import { Button } from '@/components/ui/button'
-import { useAuth } from '@/contexts/auth-context'
-import { cn } from '@/lib/utils'
-```
+## Code Organization Rules
+- **Single Responsibility**: Each file should have one primary purpose
+- **Feature Grouping**: Group related functionality by domain
+- **Separation of Concerns**: Keep UI, business logic, and data separate
+- **Reusability**: Extract common patterns into hooks and utilities
 
-### Component Imports
-- **UI Components**: Import from `@/components/ui/`
-- **Business Components**: Import from specific feature folders
-- **Utilities**: Import from `@/lib/`
-- **Hooks**: Import from `@/hooks/`
-
-## Code Organization Principles
-
-1. **Feature-Based**: Group related components by feature (auth, study, gamification)
-2. **Separation of Concerns**: Keep UI, business logic, and data separate
-3. **Reusable Components**: Build composable UI components in `/ui/`
-4. **Type Safety**: Use TypeScript interfaces for all data structures
-5. **Context for State**: Use React Context for global state management
+## Environment Configuration
+- **Development**: `.env.local` for local development
+- **Production**: Environment variables for deployment
+- **Database**: MongoDB Atlas connection string
+- **AI**: Google Gemini API key configuration
