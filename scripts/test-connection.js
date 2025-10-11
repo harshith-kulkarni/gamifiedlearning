@@ -103,4 +103,16 @@ async function testConnection() {
       console.log('- Verify your IP is whitelisted in MongoDB Atlas Network Access');
       console.log('- Try adding 0.0.0.0/0 to allow all IPs (development only)');
       console.log('- Check if your firewall is blocking the connection');
-    } else if (error.message.incl
+    } else if (error.message.includes('ECONNREFUSED')) {
+      console.log('\n🌐 Network Error Solutions:');
+      console.log('- Check your internet connection');
+      console.log('- Verify your IP is whitelisted in MongoDB Atlas Network Access');
+      console.log('- Try adding 0.0.0.0/0 to allow all IPs (development only)');
+      console.log('- Check if your firewall is blocking the connection');
+    }
+  } finally {
+    await client.close();
+  }
+}
+
+testConnection();

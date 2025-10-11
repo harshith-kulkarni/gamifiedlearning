@@ -25,35 +25,31 @@ import { ChallengeCenter } from './challenge-center';
 import { StreakCalendar } from './streak-calendar';
 
 export function GamificationDashboard() {
-  const { 
-    points, 
-    level, 
-    streak, 
-    badges, 
-    powerUps, 
-    quests, 
-    challenges,
-    dailyGoal,
-    dailyProgress,
-    activatePowerUp
-  } = useGamification();
-  
   const [activeTab, setActiveTab] = useState('overview');
 
+  // Get the gamification context
+  const gamification = useGamification();
+
   const getLevelProgress = () => {
-    const pointsInCurrentLevel = points % 100;
+    // Calculate points needed for current level
+    const pointsNeededForCurrentLevel = 100 + (gamification.level - 1) * 50;
+    // Calculate points in current level
+    const pointsInCurrentLevel = gamification.points % pointsNeededForCurrentLevel;
     return pointsInCurrentLevel;
   };
 
   const getLevelProgressPercentage = () => {
-    return (getLevelProgress() / 100) * 100;
+    // Calculate points needed for current level
+    const pointsNeededForCurrentLevel = 100 + (gamification.level - 1) * 50;
+    // Calculate percentage
+    return (getLevelProgress() / pointsNeededForCurrentLevel) * 100;
   };
 
   const getStreakIcon = () => {
-    if (streak >= 30) return <Crown className="h-6 w-6 text-yellow-500" />;
-    if (streak >= 14) return <Medal className="h-6 w-6 text-purple-500" />;
-    if (streak >= 7) return <Flame className="h-6 w-6 text-red-500" />;
-    if (streak >= 3) return <Zap className="h-6 w-6 text-orange-500" />;
+    if (gamification.streak >= 30) return <Crown className="h-6 w-6 text-yellow-500" />;
+    if (gamification.streak >= 14) return <Medal className="h-6 w-6 text-purple-500" />;
+    if (gamification.streak >= 7) return <Flame className="h-6 w-6 text-red-500" />;
+    if (gamification.streak >= 3) return <Zap className="h-6 w-6 text-orange-500" />;
     return <Circle className="h-6 w-6 text-gray-400" />;
   };
 
@@ -66,12 +62,12 @@ export function GamificationDashboard() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Level</p>
-                <p className="text-2xl font-bold">{level}</p>
+                <p className="text-2xl font-bold">{gamification.level}</p>
               </div>
               <Rocket className="h-8 w-8 text-primary" />
             </div>
             <Progress value={getLevelProgressPercentage()} className="mt-2" />
-            <p className="text-xs text-muted-foreground mt-1">{getLevelProgress()}/100 XP</p>
+            <p className="text-xs text-muted-foreground mt-1">{getLevelProgress()}/{100 + (gamification.level - 1) * 50} XP</p>
           </CardContent>
         </Card>
         
@@ -80,7 +76,7 @@ export function GamificationDashboard() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Points</p>
-                <p className="text-2xl font-bold">{points}</p>
+                <p className="text-2xl font-bold">{gamification.points}</p>
               </div>
               <Star className="h-8 w-8 text-yellow-500 fill-yellow-500" />
             </div>
@@ -92,7 +88,7 @@ export function GamificationDashboard() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Streak</p>
-                <p className="text-2xl font-bold">{streak}</p>
+                <p className="text-2xl font-bold">{gamification.streak}</p>
               </div>
               {getStreakIcon()}
             </div>
@@ -104,11 +100,11 @@ export function GamificationDashboard() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Daily Goal</p>
-                <p className="text-2xl font-bold">{dailyProgress}/{dailyGoal}</p>
+                <p className="text-2xl font-bold">{gamification.dailyProgress}/{gamification.dailyGoal}</p>
               </div>
               <Target className="h-8 w-8 text-green-500" />
             </div>
-            <Progress value={(dailyProgress / dailyGoal) * 100} className="mt-2" />
+            <Progress value={(gamification.dailyProgress / gamification.dailyGoal) * 100} className="mt-2" />
           </CardContent>
         </Card>
       </div>
@@ -186,7 +182,7 @@ export function GamificationDashboard() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
-                  {badges.filter(b => b.earned).slice(0, 3).map(badge => (
+                  {gamification.badges.filter(b => b.earned).slice(0, 3).map(badge => (
                     <div key={badge.id} className="flex items-center gap-3 p-2 bg-muted rounded-lg">
                       <span className="text-2xl">{badge.icon}</span>
                       <div>
@@ -195,7 +191,7 @@ export function GamificationDashboard() {
                       </div>
                     </div>
                   ))}
-                  {badges.filter(b => b.earned).length === 0 && (
+                  {gamification.badges.filter(b => b.earned).length === 0 && (
                     <p className="text-muted-foreground text-center py-4">No achievements yet. Start studying to earn your first badge!</p>
                   )}
                 </div>
@@ -211,7 +207,7 @@ export function GamificationDashboard() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
-                  {quests.filter(q => !q.completed).slice(0, 3).map(quest => (
+                  {gamification.quests.filter(q => !q.completed).slice(0, 3).map(quest => (
                     <div key={quest.id} className="space-y-2">
                       <div className="flex items-center gap-3">
                         <span className="text-xl">{quest.icon}</span>
@@ -225,7 +221,7 @@ export function GamificationDashboard() {
                       <p className="text-xs text-muted-foreground text-right">{quest.progress}/{quest.target}</p>
                     </div>
                   ))}
-                  {quests.filter(q => !q.completed).length === 0 && (
+                  {gamification.quests.filter(q => !q.completed).length === 0 && (
                     <p className="text-muted-foreground text-center py-4">No active quests. Complete challenges to unlock new ones!</p>
                   )}
                 </div>
@@ -244,7 +240,7 @@ export function GamificationDashboard() {
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                {badges.map(badge => (
+                {gamification.badges.map(badge => (
                   <div 
                     key={badge.id} 
                     className={`flex flex-col items-center p-4 rounded-lg border-2 transition-all duration-300 ${
@@ -279,7 +275,7 @@ export function GamificationDashboard() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {quests.filter(q => !q.completed).map(quest => (
+                  {gamification.quests.filter(q => !q.completed).map(quest => (
                     <div key={quest.id} className="p-4 border rounded-lg">
                       <div className="flex items-start justify-between">
                         <div className="flex items-start gap-3">
@@ -295,7 +291,7 @@ export function GamificationDashboard() {
                       </div>
                     </div>
                   ))}
-                  {quests.filter(q => !q.completed).length === 0 && (
+                  {gamification.quests.filter(q => !q.completed).length === 0 && (
                     <p className="text-muted-foreground text-center py-4">No active quests. Complete challenges to unlock new ones!</p>
                   )}
                 </div>
@@ -311,7 +307,7 @@ export function GamificationDashboard() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
-                  {quests.filter(q => q.completed).map(quest => (
+                  {gamification.quests.filter(q => q.completed).map(quest => (
                     <div key={quest.id} className="flex items-center gap-3 p-3 bg-muted rounded-lg">
                       <span className="text-xl">{quest.icon}</span>
                       <div className="flex-1">
@@ -321,7 +317,7 @@ export function GamificationDashboard() {
                       <Badge variant="default">+{quest.reward} pts</Badge>
                     </div>
                   ))}
-                  {quests.filter(q => q.completed).length === 0 && (
+                  {gamification.quests.filter(q => q.completed).length === 0 && (
                     <p className="text-muted-foreground text-center py-4">No completed quests yet. Keep studying to unlock achievements!</p>
                   )}
                 </div>
@@ -340,7 +336,7 @@ export function GamificationDashboard() {
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {powerUps.map(powerUp => (
+                {gamification.powerUps.map(powerUp => (
                   <div 
                     key={powerUp.id} 
                     className={`p-4 rounded-lg border-2 transition-all duration-300 ${
@@ -364,7 +360,7 @@ export function GamificationDashboard() {
                       </div>
                       <Button
                         size="sm"
-                        onClick={() => activatePowerUp(powerUp.id)}
+                        onClick={() => gamification.activatePowerUp(powerUp.id)}
                         disabled={powerUp.active}
                         className={powerUp.active ? 'opacity-50' : ''}
                       >

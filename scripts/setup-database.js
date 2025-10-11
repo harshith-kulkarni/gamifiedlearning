@@ -175,6 +175,14 @@ async function setupDatabase() {
       console.log('ℹ️  Tasks index:', error.message);
     }
     
+    // Create unique index on sessionId to prevent duplicates
+    try {
+      await db.collection('tasks').createIndex({ sessionId: 1 }, { unique: true });
+      console.log('✅ Created unique index on tasks.sessionId');
+    } catch (error) {
+      console.log('ℹ️  Tasks sessionId index:', error.message);
+    }
+    
     console.log('🎉 Database setup completed successfully!');
     
   } catch (error) {

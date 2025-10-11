@@ -296,6 +296,13 @@ export function GamificationProvider({ children }: { children: ReactNode }) {
     return currentLevel;
   }, []);
 
+  // Calculate points needed for next level
+  const calculatePointsForNextLevel = useCallback((currentLevel: number, currentPoints: number) => {
+    const pointsNeededForCurrentLevel = 100 + (currentLevel - 1) * 50;
+    const pointsInCurrentLevel = currentPoints % pointsNeededForCurrentLevel;
+    return pointsNeededForCurrentLevel - pointsInCurrentLevel;
+  }, []);
+
   // Define earnBadge first to avoid dependency issues
   const earnBadge = useCallback((badgeId: string) => {
     setBadges(prev => prev.map(badge => 
@@ -357,6 +364,34 @@ export function GamificationProvider({ children }: { children: ReactNode }) {
     const actualAmount = doublePointsActive ? amount * 2 : amount;
     setPoints(prev => Math.max(0, prev + actualAmount)); // Prevent negative points
   }, [powerUps]);
+
+  // New function to handle study session points
+  const addStudySessionPoints = useCallback((minutes: number, completedSuccessfully: boolean) => {
+    if (completedSuccessfully) {
+      // If session completed successfully then time in minutes * 5 points to be added
+      const pointsEarned = minutes * 5;
+      addPoints(pointsEarned);
+      return pointsEarned;
+    } else {
+      // If session ended before then -25 points
+      addPoints(-25);
+      return -25;
+    }
+  }, [addPoints]);
+
+  // New function to handle quiz points
+  const addQuizPoints = useCallback((correctAnswers: number, wrongAnswers: number, answersRevealed: number) => {
+    // For every correct answer +5 points
+    const correctPoints = correctAnswers * 5;
+    // For every wrong answer -1 point
+    const wrongPoints = wrongAnswers * -1;
+    // If answer revealed then -10 points
+    const revealedPoints = answersRevealed * -10;
+    
+    const totalPoints = correctPoints + wrongPoints + revealedPoints;
+    addPoints(totalPoints);
+    return totalPoints;
+  }, [addPoints]);
 
   const activatePowerUp = useCallback((powerUpId: string) => {
     setPowerUps(prev => prev.map(powerUp => {
@@ -502,6 +537,8 @@ export function GamificationProvider({ children }: { children: ReactNode }) {
     dailyProgress,
     totalStudyTime,
     addPoints,
+    addStudySessionPoints,
+    addQuizPoints,
     buyPowerUp,
     incrementStreak,
     resetStreak,
@@ -514,6 +551,7 @@ export function GamificationProvider({ children }: { children: ReactNode }) {
     addStudyTime,
     unlockAchievement,
     calculateLevelFromPoints,
+    calculatePointsForNextLevel,
   };
 
   return (

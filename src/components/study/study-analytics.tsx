@@ -155,7 +155,7 @@ export function StudyAnalytics() {
             <span className="text-2xl">🔥</span>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{user?.progress.streak || 0}</div>
+            <div className="text-2xl font-bold">{user?.progress?.streak || 0}</div>
             <p className="text-xs text-muted-foreground">
               Days in a row
             </p>

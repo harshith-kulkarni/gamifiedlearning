@@ -1,104 +1,110 @@
-# StudyMaster AI - Developer Setup Guide
+# Developer Setup Guide
 
-## 🚀 Quick Start for New Developers
+## Overview
+This guide provides step-by-step instructions for setting up the Gamified Learning Platform for development.
 
-### Prerequisites
-- Node.js 18+ installed
-- Git access to the repository
-- MongoDB Atlas account access (provided by team lead)
+## Prerequisites
+- Node.js (version 18 or higher)
+- npm (comes with Node.js)
+- Git
+- MongoDB Atlas account (credentials provided in codebase)
 
-### 1. Clone and Install
+## Initial Setup
+
+### 1. Clone the Repository
 ```bash
-git clone [repository-url]
-cd studymaster-ai
-npm install
+git clone <repository-url>
+cd gamifiedlearning
 ```
 
-### 2. Environment Setup
+### 2. Clean Installation
+To avoid dependency conflicts, use the clean installation script:
 
-**Copy the environment template:**
 ```bash
-cp .env.example .env.local
+node scripts/clean-install.js
 ```
 
-**Update `.env.local` with your credentials:**
+This script will:
+- Remove any existing package-lock.json
+- Remove node_modules directory
+- Install fresh dependencies matching package.json
+
+### 3. Environment Configuration
+Create a `.env.local` file in the project root with the following content:
+
 ```env
-GEMINI_API_KEY=your_gemini_api_key_here
-MONGODB_URI=mongodb+srv://[your-username]:[your-password]@studymaster.wzaaliv.mongodb.net/studymaster?retryWrites=true&w=majority&appName=Studymaster
-NEXTAUTH_SECRET=your-nextauth-secret-here
-NEXTAUTH_URL=http://localhost:3000
+GEMINI_API_KEY="AIzaSyCcuodvxOhaEFrAjeLC0lFH9B2-SIw9QgU"
+MONGODB_URI="mongodb+srv://studymaster-user:0uMZo1bshMqTjWNY@studymaster.wzaaliv.mongodb.net/studymaster?retryWrites=true&w=majority&appName=Studymaster"
+NEXTAUTH_SECRET="d8e8f8a8b8c8d8e8f8a8b8c8d8e8f8a8b8c8d8e8f8a8b8c8d8e8f8a8b8c8d8e8"
+JWT_SECRET="d8e8f8a8b8c8d8e8f8a8b8c8d8e8f8a8b8c8d8e8f8a8b8c8d8e8f8a8b8c8d8e8"
+JWT_EXPIRATION=7d
+NEXTAUTH_URL=http://localhost:9002
 ```
 
-### 3. Database Access
-
-**Request access from team lead:**
-- Your team lead will create a MongoDB Atlas database user for you
-- You'll receive your unique username and password
-- Replace `[your-username]` and `[your-password]` in the MONGODB_URI
-
-**Alternative - Shared Development Database:**
-- Use the shared development credentials provided by team lead
-- All developers can use the same development database user
-
-### 4. API Keys Setup
-
-**Google Gemini API Key:**
-- Get your own API key from [Google AI Studio](https://makersuite.google.com/app/apikey)
-- Or use the shared development key provided by team lead
-
-**NextAuth Secret:**
-- Generate a random secret: `openssl rand -base64 32`
-- Or use the shared development secret
-
-### 5. Run the Application
+### 4. Database Setup
+Initialize the database collections and indexes:
 
 ```bash
-# Start development server
-npm run dev
-
-# Start Genkit AI server (in separate terminal)
-npm run genkit:dev
+npm run setup:db
 ```
 
-### 6. Verify Setup
+### 5. Fix User Passwords
+Ensure test users have properly hashed passwords:
 
-1. **Open** http://localhost:3000
-2. **Create an account** or login
-3. **Start a study session** to test database connectivity
-4. **Check console** for any connection errors
+```bash
+node scripts/fix-user-passwords.js
+```
 
-## 🔧 Troubleshooting
+## Development Workflow
+
+### Start Development Server
+```bash
+npm run dev
+```
+
+The application will be available at http://localhost:9003
+
+### Test Credentials
+Use these credentials to test the application:
+
+- Email: `john.doe@example.com` / Password: `password123`
+- Email: `jane.smith@example.com` / Password: `password123`
+
+## Troubleshooting
+
+### Dependency Issues
+If you encounter dependency conflicts:
+1. Run `node scripts/clean-install.js`
+2. Check that your Node.js version is 18 or higher
+3. Clear npm cache: `npm cache clean --force`
 
 ### Database Connection Issues
-- Verify your IP is whitelisted in MongoDB Atlas Network Access
-- Check that your username/password are correct
-- Ensure the database name is `studymaster`
+1. Verify MONGODB_URI in .env.local
+2. Ensure your IP is whitelisted in MongoDB Atlas
+3. Test connection: `npm run test:connection`
 
-### API Key Issues
-- Verify Gemini API key is valid and has quota
-- Check that the key has proper permissions
+### Authentication Issues
+1. Run `node scripts/fix-user-passwords.js`
+2. Test login: `npm run test:login`
+3. Check NEXTAUTH_SECRET and JWT_SECRET in .env.local
 
-### Port Conflicts
-- Change NEXTAUTH_URL port if 3000 is in use
-- Update both .env.local and package.json dev script
+## Project Structure
+- `src/` - Main application source code
+- `scripts/` - Utility scripts for setup and maintenance
+- `public/` - Static assets
+- `styles/` - Global styles and Tailwind configuration
 
-## 🤝 Team Collaboration
+## Available Scripts
+- `npm run dev` - Start development server
+- `npm run build` - Build production version
+- `npm run start` - Start production server
+- `npm run lint` - Run ESLint
+- `npm run setup:db` - Set up database collections
+- `npm run test:connection` - Test database connection
+- `npm run test:login` - Test login functionality
 
-### Database Collections
-- **users**: User accounts and basic info
-- **userstats**: Gamification data (points, level, streak, badges)
-- **tasks**: Study sessions and completion data
-- **quiz**: Quiz results and scores
-
-### Development Best Practices
-- Never commit `.env.local` to git
-- Use separate database users for each developer
-- Test database operations before pushing code
-- Coordinate schema changes with team lead
-
-## 📞 Need Help?
-Contact the team lead for:
-- MongoDB Atlas access
-- API key sharing
-- Environment configuration
-- Database schema questions
+## Contributing
+1. Create a feature branch
+2. Make your changes
+3. Test thoroughly
+4. Submit a pull request

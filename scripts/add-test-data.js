@@ -1,4 +1,4 @@
-const { MongoClient, ObjectId } = require('mongodb');
+const { MongoClient, ObjectId, Int32 } = require('mongodb');
 require('dotenv').config({ path: '.env.local' });
 
 const MONGODB_URI = process.env.MONGODB_URI;
@@ -58,8 +58,8 @@ async function addTestData() {
         sessionId,
         title: `Study Session ${i + 1}`,
         status: 'completed',
-        studyTime: duration,
-        pointsEarned: points,
+        studyTime: new Int32(duration),
+        pointsEarned: new Int32(points),
         createdAt: sessionDate,
         updatedAt: sessionDate,
         completedAt: sessionDate

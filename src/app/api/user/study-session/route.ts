@@ -85,12 +85,31 @@ export async function POST(request: NextRequest) {
       success: true,
       session: studySession,
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Add study session error:', error);
-    return NextResponse.json(
-      { error: 'Unauthorized' },
-      { status: 401 }
-    );
+    
+    // Provide more specific error messages
+    if (error.name === 'JsonWebTokenError') {
+      return NextResponse.json(
+        { error: 'Invalid authentication token' },
+        { status: 401 }
+      );
+    } else if (error.name === 'TokenExpiredError') {
+      return NextResponse.json(
+        { error: 'Authentication token has expired' },
+        { status: 401 }
+      );
+    } else if (error.message === 'No token provided') {
+      return NextResponse.json(
+        { error: 'No authentication token provided' },
+        { status: 401 }
+      );
+    } else {
+      return NextResponse.json(
+        { error: error.message || 'Failed to save study session' },
+        { status: 500 }
+      );
+    }
   }
 }
 
@@ -102,11 +121,30 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       sessions,
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Get study sessions error:', error);
-    return NextResponse.json(
-      { error: 'Unauthorized' },
-      { status: 401 }
-    );
+    
+    // Provide more specific error messages
+    if (error.name === 'JsonWebTokenError') {
+      return NextResponse.json(
+        { error: 'Invalid authentication token' },
+        { status: 401 }
+      );
+    } else if (error.name === 'TokenExpiredError') {
+      return NextResponse.json(
+        { error: 'Authentication token has expired' },
+        { status: 401 }
+      );
+    } else if (error.message === 'No token provided') {
+      return NextResponse.json(
+        { error: 'No authentication token provided' },
+        { status: 401 }
+      );
+    } else {
+      return NextResponse.json(
+        { error: error.message || 'Failed to retrieve study sessions' },
+        { status: 500 }
+      );
+    }
   }
 }

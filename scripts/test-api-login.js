@@ -7,10 +7,11 @@
  * with the updated AtlasUserService and new database schema.
  */
 
-const fetch = require('node-fetch');
+// Use built-in fetch in Node.js 18+
+// const fetch = require('node-fetch');
 
 async function testAPILogin() {
-  const baseUrl = 'http://localhost:3000';
+  const baseUrl = 'http://localhost:9003'; // Updated to match our dev server port
   
   console.log('🔄 Testing Login API...');
   console.log(`Base URL: ${baseUrl}`);

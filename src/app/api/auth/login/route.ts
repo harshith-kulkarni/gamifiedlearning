@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { AuthService } from '@/lib/services/auth-service';
+import { AtlasUserService } from '@/lib/services/atlas-user-service';
 
 export async function POST(request: NextRequest) {
   try {
@@ -22,15 +23,14 @@ export async function POST(request: NextRequest) {
     }
 
     const { user, token } = result;
+    
+    // Get complete user data including progress
+    const completeUser = await AtlasUserService.getUserById(user._id!.toString());
 
     // Set cookie with token (optional, but useful for browser-based auth)
     const response = NextResponse.json({
       success: true,
-      user: {
-        id: user._id,
-        username: user.username,
-        email: user.email,
-      },
+      user: completeUser,
       token,
     });
 

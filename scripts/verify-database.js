@@ -7,7 +7,7 @@
  * and tests the increment/update functionality.
  */
 
-const { MongoClient, ObjectId } = require('mongodb');
+const { MongoClient, ObjectId, Int32 } = require('mongodb');
 require('dotenv').config({ path: '.env.local' });
 
 const uri = process.env.MONGODB_URI;
@@ -122,8 +122,8 @@ async function verifyDatabase() {
       {
         $set: {
           status: 'completed',
-          studyTime: 1200,
-          pointsEarned: 100,
+          studyTime: new Int32(1200),
+          pointsEarned: new Int32(100),
           completedAt: new Date(),
           updatedAt: new Date()
         }
@@ -175,7 +175,7 @@ async function verifyDatabase() {
       totalQuestions: 1,
       correctAnswers: 1,
       timeSpent: 30,
-      pointsEarned: 100,
+      pointsEarned: new Int32(100),
       completed: true,
       createdAt: new Date(),
       completedAt: new Date()

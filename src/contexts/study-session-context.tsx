@@ -88,7 +88,7 @@ export function StudySessionProvider({ children }: { children: ReactNode }) {
     const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
     
     // Integrate with gamification system
-    const { addPoints, incrementStreak, checkQuestProgress, powerUps } = useGamification();
+    const { addPoints, incrementStreak, checkQuestProgress, powerUps, addStudyTime } = useGamification();
 
     // Load completed sessions from localStorage on initial client-side render
     useEffect(() => {
@@ -187,6 +187,9 @@ export function StudySessionProvider({ children }: { children: ReactNode }) {
             return [...prev, session]
         });
         
+        // Calculate study time in minutes
+        const studyTimeInMinutes = Math.floor(studyDuration / 60);
+        
         // Save to database - but don't block the UI if it fails
         const saveToDatabase = async () => {
             try {
@@ -199,7 +202,7 @@ export function StudySessionProvider({ children }: { children: ReactNode }) {
                 const sessionData = {
                     id: session.id,
                     taskName: session.taskName,
-                    duration: Math.floor(studyDuration / 60), // Convert to minutes
+                    duration: studyTimeInMinutes, // Convert to minutes
                     score: 85, // Default score, should be calculated from quiz
                     points: session.points,
                     quizAnswers: quizAnswers.map(qa => ({
@@ -222,7 +225,17 @@ export function StudySessionProvider({ children }: { children: ReactNode }) {
 
                 if (!response.ok) {
                     const errorData = await response.text();
-                    console.error('Failed to save study session:', response.status, errorData);
+                    let errorMessage = 'Failed to save study session';
+                    
+                    try {
+                        const errorObj = JSON.parse(errorData);
+                        errorMessage = errorObj.error || errorMessage;
+                    } catch (parseError) {
+                        // If parsing fails, use the raw error data
+                        errorMessage = errorData || errorMessage;
+                    }
+                    
+                    console.error('Failed to save study session:', response.status, errorMessage);
                 } else {
                     const result = await response.json();
                     console.log('Study session saved successfully:', result);
@@ -236,15 +249,20 @@ export function StudySessionProvider({ children }: { children: ReactNode }) {
         saveToDatabase();
         
         // Gamification: Add points for completing session
-        addPoints(session.points);
+        // If session completed successfully then time in minutes * 5 points to be added
+        const pointsEarned = studyTimeInMinutes * 5;
+        addPoints(pointsEarned);
         
         // Update quest progress
         checkQuestProgress('quiz-5', 1);
-        checkQuestProgress('study-60', Math.floor(studyDuration / 60)); // Use actual minutes studied
+        checkQuestProgress('study-60', studyTimeInMinutes); // Use actual minutes studied
         
         // Increment streak
         incrementStreak();
-    }, [user, studyDuration, quizAnswers, addPoints, checkQuestProgress, incrementStreak]);
+        
+        // Add study time to total
+        addStudyTime(studyTimeInMinutes);
+    }, [user, studyDuration, quizAnswers, addPoints, checkQuestProgress, incrementStreak, addStudyTime]);
 
     // Sync timer duration with study duration
     useEffect(() => {

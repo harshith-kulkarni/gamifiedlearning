@@ -8,7 +8,7 @@
 import { getDatabase } from '@/lib/mongodb';
 import { User as LegacyUser, UserProgress, StudySession, defaultUserProgress } from '@/lib/models/user';
 import bcrypt from 'bcryptjs';
-import { ObjectId } from 'mongodb';
+import { MongoClient, ServerApiVersion, ObjectId, Int32 } from 'mongodb';
 
 // Atlas User interface (matches our new schema)
 interface AtlasUser {
@@ -272,14 +272,15 @@ export class AtlasUserService {
     const userStats = db.collection('userstats');
     
     // Create session in tasks collection
-    const sessionId = `session_${Date.now()}`;
+    // Use a more unique identifier to prevent duplicates
+    const sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     const newTask = {
       userId: new ObjectId(userId),
       sessionId,
       title: session.taskName,
       status: 'completed',
-      studyTime: session.duration, // in minutes
-      pointsEarned: session.points,
+      studyTime: new Int32(session.duration), // Ensure it's an integer
+      pointsEarned: new Int32(session.points), // Ensure it's an integer
       createdAt: session.completedAt,
       updatedAt: new Date(),
       completedAt: session.completedAt
@@ -367,9 +368,9 @@ export class AtlasUserService {
       
       sessions.push({
         date: task.createdAt.toISOString().split('T')[0],
-        duration: task.studyTime || 0,
+        duration: task.studyTime ? (typeof task.studyTime === 'number' ? task.studyTime : task.studyTime.valueOf()) : 0,
         score: quiz?.score || 0,
-        points: task.pointsEarned || 0
+        points: task.pointsEarned ? (typeof task.pointsEarned === 'number' ? task.pointsEarned : task.pointsEarned.valueOf()) : 0
       });
     }
 
