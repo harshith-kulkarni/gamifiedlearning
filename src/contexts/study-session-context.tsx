@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useState, ReactNode, useCallback, useEffect, useMemo, useRef } from 'react';
+import React, { createContext, useContext, useState, ReactNode, useCallback, useEffect, useMemo, useRef } from 'react';
 import type { GenerateQuizQuestionsOutput } from '@/ai/flows/generate-quiz-questions-from-pdf';
 import { useGamification } from '@/contexts/gamification-context';
 import { useAuth } from '@/contexts/auth-context';
@@ -115,7 +115,7 @@ export function StudySessionProvider({ children }: { children: ReactNode }) {
     useEffect(() => {
         if (timerState.isActive && timerState.timeRemaining > 0) {
             timerIntervalRef.current = setInterval(() => {
-                setTimerState(prev => {
+                setTimerState((prev: typeof timerState) => {
                     const newTimeRemaining = Math.max(0, prev.timeRemaining - 1);
                     const newElapsedTime = studyDuration - newTimeRemaining;
                     return {
@@ -142,8 +142,8 @@ export function StudySessionProvider({ children }: { children: ReactNode }) {
 
 
     const addQuizAnswer = useCallback((newAnswer: QuizAnswer) => {
-        setQuizAnswers(prev => {
-            const existingIndex = prev.findIndex(a => a.questionIndex === newAnswer.questionIndex);
+        setQuizAnswers((prev: QuizAnswer[]) => {
+            const existingIndex = prev.findIndex((a: QuizAnswer) => a.questionIndex === newAnswer.questionIndex);
             if (existingIndex > -1) {
                 const updatedAnswers = [...prev];
                 updatedAnswers[existingIndex] = newAnswer;
@@ -154,21 +154,21 @@ export function StudySessionProvider({ children }: { children: ReactNode }) {
     }, []);
 
     const getAnswerForQuestion = useCallback((questionIndex: number) => {
-        return quizAnswers.find(a => a.questionIndex === questionIndex)?.answer;
+        return quizAnswers.find((a: QuizAnswer) => a.questionIndex === questionIndex)?.answer;
     }, [quizAnswers]);
     
     const useCoin = useCallback(() => {
         if (coinsUsed >= 3) {
             return false; // Cannot use more than 3 coins
         }
-        setCoinsUsed(prev => prev + 1);
+        setCoinsUsed((prev: number) => prev + 1);
         // Gamification: Answer reveal penalty
         addPoints(-10); // -10 points for revealing answer
         return true;
     }, [coinsUsed, addPoints]);
     
     const addPenalty = useCallback((points: number) => {
-        setPenaltyPoints(prev => prev + points);
+        setPenaltyPoints((prev: number) => prev + points);
         // Gamification: Penalties affect points
         addPoints(-points);
     }, [addPoints]);
@@ -179,9 +179,9 @@ export function StudySessionProvider({ children }: { children: ReactNode }) {
             return;
         }
 
-        setCompletedSessions(prev => {
+        setCompletedSessions((prev: CompletedSession[]) => {
             // Avoid adding duplicates
-            if (prev.find(s => s.id === session.id)) {
+            if (prev.find((s: CompletedSession) => s.id === session.id)) {
                 return prev;
             }
             return [...prev, session]
@@ -205,7 +205,7 @@ export function StudySessionProvider({ children }: { children: ReactNode }) {
                     duration: studyTimeInMinutes, // Convert to minutes
                     score: 85, // Default score, should be calculated from quiz
                     points: session.points,
-                    quizAnswers: quizAnswers.map(qa => ({
+                    quizAnswers: quizAnswers.map((qa: QuizAnswer) => ({
                         questionIndex: qa.questionIndex,
                         answer: qa.answer,
                         correct: true // This should be calculated based on correct answers
@@ -267,7 +267,7 @@ export function StudySessionProvider({ children }: { children: ReactNode }) {
     // Sync timer duration with study duration
     useEffect(() => {
         if (!timerState.isActive && !timerState.isPaused) {
-            setTimerState(prev => ({
+            setTimerState((prev: typeof timerState) => ({
                 ...prev,
                 timeRemaining: studyDuration,
                 elapsedTime: 0,
@@ -277,7 +277,7 @@ export function StudySessionProvider({ children }: { children: ReactNode }) {
 
     // Timer management functions
     const updateTimerState = useCallback((updates: Partial<typeof timerState>) => {
-        setTimerState(prev => ({ ...prev, ...updates }));
+        setTimerState((prev: typeof timerState) => ({ ...prev, ...updates }));
     }, []);
 
     const resetTimer = useCallback(() => {

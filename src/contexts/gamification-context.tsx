@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useState, ReactNode, useCallback, useEffect } from 'react';
+import React, { createContext, useContext, useState, ReactNode, useCallback, useEffect } from 'react';
 import { useAuth } from '@/contexts/auth-context';
 
 // Types for our gamification system
@@ -165,9 +165,9 @@ export function GamificationProvider({ children }: { children: ReactNode }) {
       if (user.progress.studySessions) {
         const today = new Date().toISOString().split('T')[0];
         const todaysSessions = user.progress.studySessions.filter(
-          session => session.completedAt && session.completedAt.toString().split('T')[0] === today
+          (session: any) => session.completedAt && session.completedAt.toString().split('T')[0] === today
         );
-        const todaysTime = todaysSessions.reduce((total, session) => total + (session.duration || 0), 0);
+        const todaysTime = todaysSessions.reduce((total: number, session: any) => total + (session.duration || 0), 0);
         setDailyProgress(Math.min(todaysTime, user.progress.dailyGoal || 30));
       }
     } else {
@@ -207,7 +207,7 @@ export function GamificationProvider({ children }: { children: ReactNode }) {
         totalStudyTime: Math.floor(totalStudyTime),
         dailyGoal: Math.floor(dailyGoal),
         // Format badges according to schema
-        badges: badges.map(badge => ({
+        badges: badges.map((badge: Badge) => ({
           id: badge.id,
           name: badge.name,
           description: badge.description,
@@ -217,7 +217,7 @@ export function GamificationProvider({ children }: { children: ReactNode }) {
           ...(badge.rarity && { rarity: badge.rarity })
         })),
         // Format quests according to schema
-        quests: quests.map(quest => ({
+        quests: quests.map((quest: Quest) => ({
           id: quest.id,
           name: quest.name,
           description: quest.description,
@@ -230,7 +230,7 @@ export function GamificationProvider({ children }: { children: ReactNode }) {
           ...(quest.category && { category: quest.category })
         })),
         // Format achievements according to schema
-        achievements: achievements.map(achievement => ({
+        achievements: achievements.map((achievement: Achievement) => ({
           id: achievement.id,
           name: achievement.name,
           description: achievement.description,
@@ -305,7 +305,7 @@ export function GamificationProvider({ children }: { children: ReactNode }) {
 
   // Define earnBadge first to avoid dependency issues
   const earnBadge = useCallback((badgeId: string) => {
-    setBadges(prev => prev.map(badge => 
+    setBadges((prev: Badge[]) => prev.map((badge: Badge) => 
       badge.id === badgeId && !badge.earned 
         ? { ...badge, earned: true, earnedAt: new Date() } 
         : badge
@@ -317,7 +317,7 @@ export function GamificationProvider({ children }: { children: ReactNode }) {
     if (newLevel > level) {
       setLevel(newLevel);
       // Award level up bonus: +100 points (but prevent infinite loop)
-      setPoints(prev => prev + 100);
+      setPoints((prev: number) => prev + 100);
       
       // Award level up badge
       if (newLevel >= 5) {
@@ -343,7 +343,7 @@ export function GamificationProvider({ children }: { children: ReactNode }) {
   // Power-up timer
   useEffect(() => {
     const interval = setInterval(() => {
-      setPowerUps(prev => prev.map(powerUp => {
+      setPowerUps((prev: PowerUp[]) => prev.map((powerUp: PowerUp) => {
         if (powerUp.active && powerUp.endTime) {
           const now = new Date();
           if (now >= powerUp.endTime) {
@@ -360,9 +360,9 @@ export function GamificationProvider({ children }: { children: ReactNode }) {
   // Actions
   const addPoints = useCallback((amount: number) => {
     // Check for active 2x power-up
-    const doublePointsActive = powerUps.some(p => p.id === 'double-points' && p.active);
+    const doublePointsActive = powerUps.some((p: PowerUp) => p.id === 'double-points' && p.active);
     const actualAmount = doublePointsActive ? amount * 2 : amount;
-    setPoints(prev => Math.max(0, prev + actualAmount)); // Prevent negative points
+    setPoints((prev: number) => Math.max(0, prev + actualAmount)); // Prevent negative points
   }, [powerUps]);
 
   // New function to handle study session points
@@ -394,7 +394,7 @@ export function GamificationProvider({ children }: { children: ReactNode }) {
   }, [addPoints]);
 
   const activatePowerUp = useCallback((powerUpId: string) => {
-    setPowerUps(prev => prev.map(powerUp => {
+    setPowerUps((prev: PowerUp[]) => prev.map((powerUp: PowerUp) => {
       if (powerUp.id === powerUpId) {
         if (powerUp.duration > 0) {
           const endTime = new Date();
@@ -414,7 +414,7 @@ export function GamificationProvider({ children }: { children: ReactNode }) {
     const powerUpCost = 100; // All power-ups cost 100 points
     
     if (points >= powerUpCost) {
-      setPoints(prev => prev - powerUpCost);
+      setPoints((prev: number) => prev - powerUpCost);
       activatePowerUp(powerUpId);
       return true;
     }
@@ -433,7 +433,7 @@ export function GamificationProvider({ children }: { children: ReactNode }) {
       
       if (lastStudyDate === yesterdayStr) {
         // Consecutive day - increment streak
-        setStreak(prev => prev + 1);
+        setStreak((prev: number) => prev + 1);
       } else if (lastStudyDate !== today) {
         // Not consecutive - reset streak to 1
         setStreak(1);
@@ -449,21 +449,21 @@ export function GamificationProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const completeQuest = useCallback((questId: string) => {
-    setQuests(prev => prev.map(quest => 
+    setQuests((prev: Quest[]) => prev.map((quest: Quest) => 
       quest.id === questId && !quest.completed 
         ? { ...quest, completed: true, completedAt: new Date(), progress: quest.target } 
         : quest
     ));
     
     // Award points for completing quest
-    const quest = quests.find(q => q.id === questId);
+    const quest = quests.find((q: Quest) => q.id === questId);
     if (quest) {
       addPoints(quest.reward);
     }
   }, [quests, addPoints]);
 
   const completeChallenge = useCallback((challengeId: string) => {
-    setChallenges(prev => prev.map(challenge => 
+    setChallenges((prev: Challenge[]) => prev.map((challenge: Challenge) => 
       challenge.id === challengeId && !challenge.completed 
         ? { ...challenge, completed: true, completedAt: new Date() } 
         : challenge
@@ -471,35 +471,35 @@ export function GamificationProvider({ children }: { children: ReactNode }) {
     
     // Award points for completing challenge
     // Find the challenge in the previous state to get its reward value
-    const challengeReward = challenges.find(c => c.id === challengeId)?.reward || 0;
+    const challengeReward = challenges.find((c: Challenge) => c.id === challengeId)?.reward || 0;
     if (challengeReward > 0) {
       addPoints(challengeReward);
     }
   }, [challenges, addPoints]);
 
   const updateDailyProgress = useCallback((amount: number) => {
-    setDailyProgress(prev => {
+    setDailyProgress((prev: number) => {
       const newProgress = prev + amount;
       return newProgress > dailyGoal ? dailyGoal : newProgress;
     });
   }, [dailyGoal]);
 
   const unlockAchievement = useCallback((achievementId: string) => {
-    setAchievements(prev => prev.map(achievement => 
+    setAchievements((prev: Achievement[]) => prev.map((achievement: Achievement) => 
       achievement.id === achievementId && !achievement.earned 
         ? { ...achievement, earned: true, earnedAt: new Date() } 
         : achievement
     ));
     
     // Award points for unlocking achievement
-    const achievement = achievements.find(a => a.id === achievementId);
+    const achievement = achievements.find((a: Achievement) => a.id === achievementId);
     if (achievement) {
       addPoints(achievement.points);
     }
   }, [achievements, addPoints]);
 
   const addStudyTime = useCallback((minutes: number) => {
-    setTotalStudyTime(prev => prev + minutes);
+    setTotalStudyTime((prev: number) => prev + minutes);
     updateDailyProgress(minutes);
     
     // Check for study time achievements
@@ -509,7 +509,7 @@ export function GamificationProvider({ children }: { children: ReactNode }) {
   }, [totalStudyTime, updateDailyProgress, unlockAchievement]);
 
   const checkQuestProgress = useCallback((questId: string, progress: number) => {
-    setQuests(prev => prev.map(quest => {
+    setQuests((prev: Quest[]) => prev.map((quest: Quest) => {
       if (quest.id === questId && !quest.completed) {
         const newProgress = Math.min(quest.progress + progress, quest.target);
         const completed = newProgress >= quest.target;
