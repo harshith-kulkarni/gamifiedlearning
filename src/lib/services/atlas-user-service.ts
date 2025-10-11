@@ -16,20 +16,7 @@ interface AtlasUser {
   username: string;
   email: string;
   password: string;
-  profile?: {
-    firstName?: string;
-    lastName?: string;
-    avatar?: string;
-    bio?: string;
-  };
-  progress?: {
-    level: number;
-    points: number;
-    streak: number;
-    totalStudyTime: number;
-    lastStudyDate?: Date;
-    dailyGoal: number;
-  };
+  totalPoints: number;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -42,6 +29,7 @@ export class AtlasUserService {
 
   static async createUser(username: string, email: string, password: string): Promise<LegacyUser> {
     const users = await this.getUsersCollection();
+    const db = await getDatabase();
     
     // Check if user already exists
     const existingUser = await users.findOne({ 
@@ -59,21 +47,46 @@ export class AtlasUserService {
       username,
       email,
       password: hashedPassword,
-      progress: {
-        level: 1,
-        points: 0,
-        streak: 0,
-        totalStudyTime: 0,
-        dailyGoal: 30
-      },
+      totalPoints: 0,
       createdAt: new Date(),
       updatedAt: new Date()
     };
 
     const result = await users.insertOne(newAtlasUser);
+    const userId = result.insertedId;
+    
+    // Initialize user stats for the new user
+    await this.initializeUserStats(userId);
     
     // Convert to legacy format for compatibility
-    return this.convertAtlasToLegacy({ ...newAtlasUser, _id: result.insertedId });
+    return await this.convertAtlasToLegacy({ ...newAtlasUser, _id: userId });
+  }
+
+  /**
+   * Initialize user stats for a new user
+   */
+  private static async initializeUserStats(userId: ObjectId): Promise<void> {
+    const db = await getDatabase();
+    const userStats = db.collection('userstats');
+    
+    const defaultStats = {
+      userId,
+      level: 1,
+      points: 0,
+      streak: 0,
+      quizAccuracy: 0,
+      dailyGoal: 500, // 500 points per day
+      totalStudyTime: 0,
+      badges: defaultUserProgress.badges,
+      achievements: defaultUserProgress.achievements,
+      quests: defaultUserProgress.quests,
+      challenges: [],
+      powerUps: [],
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+
+    await userStats.insertOne(defaultStats);
   }
 
   static async authenticateUser(email: string, password: string): Promise<LegacyUser | null> {
@@ -90,7 +103,7 @@ export class AtlasUserService {
     }
 
     // Convert to legacy format for compatibility
-    return this.convertAtlasToLegacy(atlasUser);
+    return await this.convertAtlasToLegacy(atlasUser);
   }
 
   static async getUserById(userId: string): Promise<LegacyUser | null> {
@@ -101,7 +114,7 @@ export class AtlasUserService {
       return null;
     }
 
-    return this.convertAtlasToLegacy(atlasUser);
+    return await this.convertAtlasToLegacy(atlasUser);
   }
 
   static async getUserByEmail(email: string): Promise<LegacyUser | null> {
@@ -112,13 +125,17 @@ export class AtlasUserService {
       return null;
     }
 
-    return this.convertAtlasToLegacy(atlasUser);
+    return await this.convertAtlasToLegacy(atlasUser);
   }
 
   /**
    * Convert Atlas user format to legacy format for compatibility
    */
-  private static convertAtlasToLegacy(atlasUser: AtlasUser): LegacyUser {
+  private static async convertAtlasToLegacy(atlasUser: AtlasUser): Promise<LegacyUser> {
+    // Get user stats from userstats collection
+    const db = await getDatabase();
+    const userStats = await db.collection('userstats').findOne({ userId: atlasUser._id });
+    
     return {
       _id: atlasUser._id,
       username: atlasUser.username,
@@ -127,82 +144,91 @@ export class AtlasUserService {
       createdAt: atlasUser.createdAt,
       updatedAt: atlasUser.updatedAt,
       progress: {
-        level: atlasUser.progress?.level || 1,
-        points: atlasUser.progress?.points || 0,
-        streak: atlasUser.progress?.streak || 0,
-        lastStudyDate: atlasUser.progress?.lastStudyDate,
-        totalStudyTime: atlasUser.progress?.totalStudyTime || 0,
-        dailyGoal: atlasUser.progress?.dailyGoal || 30,
-        badges: defaultUserProgress.badges, // Use default badges for now
-        quests: defaultUserProgress.quests, // Use default quests for now
-        achievements: defaultUserProgress.achievements, // Use default achievements for now
-        studySessions: [] // Will be loaded separately from studySessions collection
+        level: userStats?.level || 1,
+        points: userStats?.points || atlasUser.totalPoints || 0,
+        streak: userStats?.streak || 0,
+        lastStudyDate: userStats?.lastStudyDate,
+        totalStudyTime: userStats?.totalStudyTime || 0,
+        dailyGoal: userStats?.dailyGoal || 500,
+        badges: userStats?.badges || defaultUserProgress.badges,
+        quests: userStats?.quests || defaultUserProgress.quests,
+        achievements: userStats?.achievements || defaultUserProgress.achievements,
+        studySessions: [] // Will be loaded separately from tasks collection
       }
     };
   }
 
   /**
-   * Update user progress (Atlas format)
+   * Update user progress (New schema format)
    */
   static async updateUserProgress(userId: string, updates: Partial<UserProgress>): Promise<void> {
-    const users = await this.getUsersCollection();
+    const db = await getDatabase();
+    const users = db.collection('users');
+    const userStats = db.collection('userstats');
     
-    const atlasUpdates: any = {
+    // Update totalPoints in users collection if points changed
+    if (updates.points !== undefined) {
+      await users.updateOne(
+        { _id: new ObjectId(userId) },
+        { 
+          $set: { 
+            totalPoints: updates.points,
+            updatedAt: new Date()
+          }
+        }
+      );
+    }
+
+    // Update detailed stats in userstats collection
+    const statsUpdates: any = {
       updatedAt: new Date()
     };
 
-    // Map legacy progress fields to Atlas format
-    if (updates.level !== undefined) atlasUpdates['progress.level'] = updates.level;
-    if (updates.points !== undefined) atlasUpdates['progress.points'] = updates.points;
-    if (updates.streak !== undefined) atlasUpdates['progress.streak'] = updates.streak;
-    if (updates.totalStudyTime !== undefined) atlasUpdates['progress.totalStudyTime'] = updates.totalStudyTime;
-    if (updates.lastStudyDate !== undefined) atlasUpdates['progress.lastStudyDate'] = updates.lastStudyDate;
-    if (updates.dailyGoal !== undefined) atlasUpdates['progress.dailyGoal'] = updates.dailyGoal;
+    if (updates.level !== undefined) statsUpdates.level = updates.level;
+    if (updates.points !== undefined) statsUpdates.points = updates.points;
+    if (updates.streak !== undefined) statsUpdates.streak = updates.streak;
+    if (updates.totalStudyTime !== undefined) statsUpdates.totalStudyTime = updates.totalStudyTime;
+    if (updates.lastStudyDate !== undefined) statsUpdates.lastStudyDate = updates.lastStudyDate;
+    if (updates.dailyGoal !== undefined) statsUpdates.dailyGoal = updates.dailyGoal;
 
-    await users.updateOne(
-      { _id: new ObjectId(userId) },
-      { $set: atlasUpdates }
+    await userStats.updateOne(
+      { userId: new ObjectId(userId) },
+      { $set: statsUpdates },
+      { upsert: true }
     );
   }
 
   /**
-   * Add study session (creates in separate collection)
+   * Add study session (creates in tasks collection)
    */
   static async addStudySession(userId: string, session: StudySession): Promise<void> {
     const db = await getDatabase();
-    const sessions = db.collection('studySessions');
-    const users = await this.getUsersCollection();
+    const tasks = db.collection('tasks');
+    const users = db.collection('users');
+    const userStats = db.collection('userstats');
     
-    // Create session in separate collection
-    const atlasSession = {
-      user: new ObjectId(userId),
+    // Create session in tasks collection
+    const sessionId = `session_${Date.now()}`;
+    const newTask = {
+      userId: new ObjectId(userId),
+      sessionId,
       title: session.taskName,
       status: 'completed',
-      studyTime: session.duration * 60, // convert minutes to seconds
-      quizScore: session.score,
-      totalQuestions: session.quizAnswers?.length || 0,
+      studyTime: session.duration, // in minutes
       pointsEarned: session.points,
-      coinsUsed: 0,
-      strengths: [],
-      areasForImprovement: [],
-      recommendations: [],
       createdAt: session.completedAt,
       updatedAt: new Date(),
       completedAt: session.completedAt
     };
 
-    await sessions.insertOne(atlasSession);
+    await tasks.insertOne(newTask);
 
-    // Update user progress
-    const user = await users.findOne({ _id: new ObjectId(userId) });
-    if (!user) {
-      throw new Error('User not found');
-    }
-
-    const currentPoints = user.progress?.points || 0;
-    const currentLevel = user.progress?.level || 1;
-    const currentStudyTime = user.progress?.totalStudyTime || 0;
-    const currentStreak = user.progress?.streak || 0;
+    // Get current user stats
+    const stats = await userStats.findOne({ userId: new ObjectId(userId) });
+    const currentPoints = stats?.points || 0;
+    const currentLevel = stats?.level || 1;
+    const currentStudyTime = stats?.totalStudyTime || 0;
+    const currentStreak = stats?.streak || 0;
     
     const newPoints = currentPoints + session.points;
     const newStudyTime = currentStudyTime + session.duration;
@@ -210,7 +236,7 @@ export class AtlasUserService {
     
     // Update streak logic
     const today = new Date();
-    const lastStudyDate = user.progress?.lastStudyDate;
+    const lastStudyDate = stats?.lastStudyDate;
     let newStreak = currentStreak;
     
     if (lastStudyDate) {
@@ -224,15 +250,28 @@ export class AtlasUserService {
       newStreak = 1;
     }
 
+    // Update user stats
+    await userStats.updateOne(
+      { userId: new ObjectId(userId) },
+      {
+        $set: {
+          points: newPoints,
+          level: newLevel,
+          totalStudyTime: newStudyTime,
+          streak: newStreak,
+          lastStudyDate: today,
+          updatedAt: new Date()
+        }
+      },
+      { upsert: true }
+    );
+
+    // Update user total points
     await users.updateOne(
       { _id: new ObjectId(userId) },
       {
         $set: {
-          'progress.points': newPoints,
-          'progress.level': newLevel,
-          'progress.totalStudyTime': newStudyTime,
-          'progress.streak': newStreak,
-          'progress.lastStudyDate': today,
+          totalPoints: newPoints,
           updatedAt: new Date()
         }
       }
@@ -240,7 +279,7 @@ export class AtlasUserService {
   }
 
   /**
-   * Get study sessions with time data (from separate collection)
+   * Get study sessions with time data (from tasks collection)
    */
   static async getStudySessionsWithTimeData(userId: string): Promise<Array<{
     date: string;
@@ -249,19 +288,28 @@ export class AtlasUserService {
     points: number;
   }>> {
     const db = await getDatabase();
-    const sessions = db.collection('studySessions');
+    const tasks = db.collection('tasks');
+    const quizzes = db.collection('quiz');
     
-    const userSessions = await sessions
-      .find({ user: new ObjectId(userId) })
+    const userTasks = await tasks
+      .find({ userId: new ObjectId(userId), status: 'completed' })
       .sort({ createdAt: -1 })
       .toArray();
 
-    return userSessions.map(session => ({
-      date: session.createdAt.toISOString().split('T')[0],
-      duration: Math.floor(session.studyTime / 60), // convert seconds to minutes
-      score: session.quizScore || 0,
-      points: session.pointsEarned || 0
-    }));
+    const sessions = [];
+    for (const task of userTasks) {
+      // Get quiz score for this session
+      const quiz = await quizzes.findOne({ sessionId: task.sessionId });
+      
+      sessions.push({
+        date: task.createdAt.toISOString().split('T')[0],
+        duration: task.studyTime || 0,
+        score: quiz?.score || 0,
+        points: task.pointsEarned || 0
+      });
+    }
+
+    return sessions;
   }
 
   // Placeholder methods for badge/quest/achievement management

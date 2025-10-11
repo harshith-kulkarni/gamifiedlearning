@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useState, ReactNode, useCallback, useEffect, useMemo } from 'react';
+import { createContext, useContext, useState, ReactNode, useCallback, useEffect, useMemo, useRef } from 'react';
 import type { GenerateQuizQuestionsOutput } from '@/ai/flows/generate-quiz-questions-from-pdf';
 import { useGamification } from '@/contexts/gamification-context';
 import { useAuth } from '@/contexts/auth-context';
@@ -33,7 +33,7 @@ interface StudySessionContextType {
     getAnswerForQuestion: (questionIndex: number) => string | undefined;
 
     coinsUsed: number;
-    useCoin: () => void;
+    useCoin: () => boolean;
 
     studyDuration: number; 
     setStudyDuration: (duration: number) => void;
@@ -49,6 +49,17 @@ interface StudySessionContextType {
     // Prefetched data
     prefetchedQuizQuestions: GenerateQuizQuestionsOutput['questions'] | null;
     setPrefetchedQuizQuestions: (questions: GenerateQuizQuestionsOutput['questions'] | null) => void;
+
+    // Timer state - persistent across tab switches
+    timerState: {
+        timeRemaining: number;
+        isActive: boolean;
+        isPaused: boolean;
+        elapsedTime: number;
+        sessionStartTime: Date | null;
+    };
+    updateTimerState: (updates: Partial<StudySessionContextType['timerState']>) => void;
+    resetTimer: () => void;
 }
 
 const StudySessionContext = createContext<StudySessionContextType | undefined>(undefined);
@@ -64,8 +75,20 @@ export function StudySessionProvider({ children }: { children: ReactNode }) {
     const [completedSessions, setCompletedSessions] = useState<CompletedSession[]>([]);
     const [prefetchedQuizQuestions, setPrefetchedQuizQuestions] = useState<GenerateQuizQuestionsOutput['questions'] | null>(null);
     
+    // Timer state - persistent across component unmounts and tab switches
+    const [timerState, setTimerState] = useState({
+        timeRemaining: 25 * 60,
+        isActive: false,
+        isPaused: false,
+        elapsedTime: 0,
+        sessionStartTime: null as Date | null,
+    });
+    
+    // Timer interval ref - persistent across renders
+    const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
+    
     // Integrate with gamification system
-    const { addPoints, incrementStreak, checkQuestProgress } = useGamification();
+    const { addPoints, incrementStreak, checkQuestProgress, powerUps } = useGamification();
 
     // Load completed sessions from localStorage on initial client-side render
     useEffect(() => {
@@ -88,6 +111,35 @@ export function StudySessionProvider({ children }: { children: ReactNode }) {
         }
     }, [completedSessions]);
 
+    // Global timer logic - runs independently of component visibility
+    useEffect(() => {
+        if (timerState.isActive && timerState.timeRemaining > 0) {
+            timerIntervalRef.current = setInterval(() => {
+                setTimerState(prev => {
+                    const newTimeRemaining = Math.max(0, prev.timeRemaining - 1);
+                    const newElapsedTime = studyDuration - newTimeRemaining;
+                    return {
+                        ...prev,
+                        timeRemaining: newTimeRemaining,
+                        elapsedTime: newElapsedTime,
+                    };
+                });
+            }, 1000);
+        } else {
+            if (timerIntervalRef.current) {
+                clearInterval(timerIntervalRef.current);
+                timerIntervalRef.current = null;
+            }
+        }
+
+        return () => {
+            if (timerIntervalRef.current) {
+                clearInterval(timerIntervalRef.current);
+                timerIntervalRef.current = null;
+            }
+        };
+    }, [timerState.isActive, studyDuration]);
+
 
     const addQuizAnswer = useCallback((newAnswer: QuizAnswer) => {
         setQuizAnswers(prev => {
@@ -106,10 +158,14 @@ export function StudySessionProvider({ children }: { children: ReactNode }) {
     }, [quizAnswers]);
     
     const useCoin = useCallback(() => {
+        if (coinsUsed >= 3) {
+            return false; // Cannot use more than 3 coins
+        }
         setCoinsUsed(prev => prev + 1);
-        // Gamification: Using coins affects points
-        addPoints(-5); // Small penalty for using coins
-    }, [addPoints]);
+        // Gamification: Answer reveal penalty
+        addPoints(-10); // -10 points for revealing answer
+        return true;
+    }, [coinsUsed, addPoints]);
     
     const addPenalty = useCallback((points: number) => {
         setPenaltyPoints(prev => prev + points);
@@ -118,7 +174,10 @@ export function StudySessionProvider({ children }: { children: ReactNode }) {
     }, [addPoints]);
 
     const addCompletedSession = useCallback(async (session: CompletedSession) => {
-        if (!user) return;
+        if (!user) {
+            console.warn('No user found, cannot save study session');
+            return;
+        }
 
         setCompletedSessions(prev => {
             // Avoid adding duplicates
@@ -128,47 +187,90 @@ export function StudySessionProvider({ children }: { children: ReactNode }) {
             return [...prev, session]
         });
         
-        // Save to database
-        try {
-            const token = localStorage.getItem('auth-token');
-            if (token) {
+        // Save to database - but don't block the UI if it fails
+        const saveToDatabase = async () => {
+            try {
+                const token = localStorage.getItem('auth-token');
+                if (!token) {
+                    console.warn('No auth token found, skipping database save');
+                    return;
+                }
+
+                const sessionData = {
+                    id: session.id,
+                    taskName: session.taskName,
+                    duration: Math.floor(studyDuration / 60), // Convert to minutes
+                    score: 85, // Default score, should be calculated from quiz
+                    points: session.points,
+                    quizAnswers: quizAnswers.map(qa => ({
+                        questionIndex: qa.questionIndex,
+                        answer: qa.answer,
+                        correct: true // This should be calculated based on correct answers
+                    }))
+                };
+
+                console.log('Attempting to save study session:', sessionData);
+
                 const response = await fetch('/api/user/study-session', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                         'Authorization': `Bearer ${token}`,
                     },
-                    body: JSON.stringify({
-                        id: session.id,
-                        taskName: session.taskName,
-                        duration: Math.floor(studyDuration / 60), // Convert to minutes
-                        score: 85, // Default score, should be calculated from quiz
-                        points: session.points,
-                        quizAnswers: quizAnswers.map(qa => ({
-                            ...qa,
-                            correct: true // This should be calculated based on correct answers
-                        }))
-                    }),
+                    body: JSON.stringify(sessionData),
                 });
 
                 if (!response.ok) {
-                    console.error('Failed to save study session');
+                    const errorData = await response.text();
+                    console.error('Failed to save study session:', response.status, errorData);
+                } else {
+                    const result = await response.json();
+                    console.log('Study session saved successfully:', result);
                 }
+            } catch (error) {
+                console.error('Error saving study session:', error);
             }
-        } catch (error) {
-            console.error('Error saving study session:', error);
-        }
+        };
+
+        // Save in background without blocking UI
+        saveToDatabase();
         
         // Gamification: Add points for completing session
         addPoints(session.points);
         
         // Update quest progress
         checkQuestProgress('quiz-5', 1);
-        checkQuestProgress('study-60', session.points / 4); // Assuming 4 points per minute
+        checkQuestProgress('study-60', Math.floor(studyDuration / 60)); // Use actual minutes studied
         
         // Increment streak
         incrementStreak();
     }, [user, studyDuration, quizAnswers, addPoints, checkQuestProgress, incrementStreak]);
+
+    // Sync timer duration with study duration
+    useEffect(() => {
+        if (!timerState.isActive && !timerState.isPaused) {
+            setTimerState(prev => ({
+                ...prev,
+                timeRemaining: studyDuration,
+                elapsedTime: 0,
+            }));
+        }
+    }, [studyDuration, timerState.isActive, timerState.isPaused]);
+
+    // Timer management functions
+    const updateTimerState = useCallback((updates: Partial<typeof timerState>) => {
+        setTimerState(prev => ({ ...prev, ...updates }));
+    }, []);
+
+    const resetTimer = useCallback(() => {
+        setTimerState({
+            timeRemaining: studyDuration,
+            isActive: false,
+            isPaused: false,
+            elapsedTime: 0,
+            sessionStartTime: null,
+        });
+    }, [studyDuration]);
 
     const resetSession = useCallback(() => {
         setTaskInfo(null);
@@ -176,6 +278,7 @@ export function StudySessionProvider({ children }: { children: ReactNode }) {
         setQuizAnswers([]);
         setCoinsUsed(0);
         setStudyDuration(25 * 60);
+        resetTimer();
         setPenaltyPoints(0);
         setPrefetchedQuizQuestions(null);
     }, [])
@@ -190,12 +293,13 @@ export function StudySessionProvider({ children }: { children: ReactNode }) {
         penaltyPoints, addPenalty,
         completedSessions, addCompletedSession,
         resetSession,
-        prefetchedQuizQuestions, setPrefetchedQuizQuestions
+        prefetchedQuizQuestions, setPrefetchedQuizQuestions,
+        timerState, updateTimerState, resetTimer
     }), [
         taskInfo, quizQuestions, quizAnswers, coinsUsed, studyDuration, 
         penaltyPoints, completedSessions, resetSession, prefetchedQuizQuestions,
         addQuizAnswer, getAnswerForQuestion, useCoin, addPenalty, 
-        addCompletedSession, setPrefetchedQuizQuestions
+        addCompletedSession, setPrefetchedQuizQuestions, timerState, updateTimerState, resetTimer
     ]);
 
     return <StudySessionContext.Provider value={value}>{children}</StudySessionContext.Provider>;

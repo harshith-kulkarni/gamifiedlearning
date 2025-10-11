@@ -23,6 +23,7 @@ import { Badge } from "@/components/ui/badge";
 import { useStudySession } from "@/contexts/study-session-context";
 import { useGamification } from "@/contexts/gamification-context";
 import { GamificationDashboard } from "@/components/gamification/gamification-dashboard";
+import { ErrorBoundary } from "@/components/error-boundary";
 
 // Task interface matching the data structure
 interface Task {
@@ -33,25 +34,72 @@ interface Task {
   points: number;
 }
 
+// Generate unique ID
+const generateUniqueId = (prefix: string, index: number) => {
+  return `${prefix}_${Date.now()}_${index}_${Math.random().toString(36).substr(2, 9)}`;
+};
+
 export default function DashboardPage() {
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const { completedSessions } = useStudySession();
   const { points, level, streak, badges, quests, challenges } = useGamification();
 
-  // Memoize the task transformation to prevent unnecessary re-renders
-  const formattedTasks = useMemo(() => {
-    return completedSessions.map(session => ({
-      id: session.id,
-      title: session.taskName,
-      status: 'Completed' as const,
-      date: new Date().toISOString().split('T')[0], // Use current date for simplicity
-      points: session.points,
-    }));
-  }, [completedSessions]);
-
+  // Fetch real tasks from database
   useEffect(() => {
-    setTasks(formattedTasks);
-  }, [formattedTasks]);
+    const fetchTasks = async () => {
+      try {
+        const token = localStorage.getItem('auth-token');
+        if (!token) {
+          setIsLoading(false);
+          return;
+        }
+
+        const response = await fetch('/api/user/study-session', {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          const formattedTasks = data.sessions.map((session: any, index: number) => ({
+            id: session.sessionId || generateUniqueId('api_session', index),
+            title: session.taskName || 'Study Session',
+            status: 'Completed' as const,
+            date: session.date,
+            points: session.points,
+          }));
+          setTasks(formattedTasks);
+        } else {
+          // Fallback to local sessions if API fails
+          const formattedTasks = completedSessions.map((session, index) => ({
+            id: session.id || generateUniqueId('local_session', index),
+            title: session.taskName,
+            status: 'Completed' as const,
+            date: new Date().toISOString().split('T')[0],
+            points: session.points,
+          }));
+          setTasks(formattedTasks);
+        }
+      } catch (error) {
+        console.error('Failed to fetch tasks:', error);
+        // Fallback to local sessions
+        const formattedTasks = completedSessions.map((session, index) => ({
+          id: session.id || generateUniqueId('fallback_session', index),
+          title: session.taskName,
+          status: 'Completed' as const,
+          date: new Date().toISOString().split('T')[0],
+          points: session.points,
+        }));
+        setTasks(formattedTasks);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchTasks();
+  }, [completedSessions]);
   
   // Memoize calculations
   const totalPoints = useMemo(() => tasks.reduce((acc, task) => acc + task.points, 0), [tasks]);
@@ -118,7 +166,9 @@ export default function DashboardPage() {
       </div>
 
       {/* Gamification Dashboard */}
-      <GamificationDashboard />
+      <ErrorBoundary>
+        <GamificationDashboard />
+      </ErrorBoundary>
 
       <Card className="gamify-card">
         <CardHeader className="px-7">
@@ -138,7 +188,28 @@ export default function DashboardPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {sortedTasks.length > 0 ? (
+              {isLoading ? (
+                // Loading skeleton
+                [...Array(3)].map((_, i) => (
+                  <TableRow key={`loading-skeleton-${i}`}>
+                    <TableCell>
+                      <div className="space-y-2">
+                        <div className="h-4 bg-muted rounded animate-pulse" />
+                        <div className="h-3 bg-muted rounded animate-pulse w-2/3" />
+                      </div>
+                    </TableCell>
+                    <TableCell className="hidden sm:table-cell">
+                      <div className="h-6 bg-muted rounded animate-pulse w-20" />
+                    </TableCell>
+                    <TableCell className="hidden md:table-cell">
+                      <div className="h-4 bg-muted rounded animate-pulse w-24" />
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="h-4 bg-muted rounded animate-pulse w-12 ml-auto" />
+                    </TableCell>
+                  </TableRow>
+                ))
+              ) : sortedTasks.length > 0 ? (
                 sortedTasks.map((task) => (
                   <TableRow key={task.id} className="gamify-card">
                     <TableCell>

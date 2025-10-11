@@ -15,7 +15,7 @@ import { generateQuizQuestions, type GenerateQuizQuestionsOutput } from '@/ai/fl
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { cn } from '@/lib/utils';
 
-export default function QuizPage() {
+export default function QuizSessionPage() {
     const router = useRouter();
     const params = useParams();
     const { toast } = useToast();
@@ -32,7 +32,7 @@ export default function QuizPage() {
             toast({
                 variant: 'destructive',
                 title: 'Session Error',
-                description: 'No document found. Redirecting to create a new task.',
+                description: 'No document found. Redirecting to create a new session.',
             });
             router.replace('/dashboard/create-task');
             return;
@@ -71,17 +71,17 @@ export default function QuizPage() {
         if (currentQuestion && selectedAnswer) {
             if (selectedAnswer === currentQuestion.answer) {
                 setScore(prev => prev + 1);
-                // Don't add points here - will be calculated in feedback page
+                // Don't add points here - will be calculated in results page
             }
         }
         
         if (quizQuestions && currentQuestionIndex < quizQuestions.length - 1) {
             setCurrentQuestionIndex(prev => prev + 1);
         } else if (quizQuestions) {
-            // Quiz completed - move to feedback
-            router.push(`/dashboard/feedback/${params.id}`);
+            // Quiz completed - move to results
+            router.push(`/dashboard/session/${params.sessionId}/results`);
         }
-    }, [currentQuestion, selectedAnswer, currentQuestionIndex, quizQuestions, router, params.id]);
+    }, [currentQuestion, selectedAnswer, currentQuestionIndex, quizQuestions, router, params.sessionId]);
 
     const handlePrev = useCallback(() => {
         if (currentQuestionIndex > 0) {
@@ -90,15 +90,25 @@ export default function QuizPage() {
     }, [currentQuestionIndex]);
 
     const handleRevealAnswer = useCallback(() => {
-        useCoin();
-        // Don't apply penalty here - will be calculated in feedback page
-        setRevealedAnswers(prev => [...prev, currentQuestionIndex]);
+        if (coinsUsed >= 3) {
+            toast({
+                title: "No More Hints Available! 🚫",
+                description: "You've used all 3 available hints for this quiz.",
+                variant: "destructive",
+            });
+            return;
+        }
         
-        toast({
-            title: "Answer Revealed! 💡",
-            description: "The correct answer is now highlighted. (-25 points)",
-        });
-    }, [useCoin, currentQuestionIndex, toast]);
+        const success = useCoin();
+        if (success) {
+            setRevealedAnswers(prev => [...prev, currentQuestionIndex]);
+            
+            toast({
+                title: "Answer Revealed! 💡",
+                description: "The correct answer is now highlighted. (-10 points)",
+            });
+        }
+    }, [useCoin, coinsUsed, currentQuestionIndex, toast]);
 
     const isAnswerRevealed = useMemo(() => revealedAnswers.includes(currentQuestionIndex), [revealedAnswers, currentQuestionIndex]);
 
@@ -138,14 +148,14 @@ export default function QuizPage() {
                 </div>
                 <div className="flex items-center gap-2 bg-purple-100 dark:bg-purple-900/30 px-3 py-1 rounded-full">
                     <Coins className="h-4 w-4 text-purple-500" />
-                    <span className="font-bold text-sm">{coinsUsed} Coins Used</span>
+                    <span className="font-bold text-sm">{coinsUsed} Hints Used</span>
                 </div>
             </div>
             
             <Card className="shadow-lg gamify-card">
                 <CardHeader>
-                    <CardTitle className="font-headline text-2xl">Quiz Time: {taskInfo?.name}</CardTitle>
-                    <CardDescription>Test your knowledge. Let's see what you've learned!</CardDescription>
+                    <CardTitle className="font-headline text-2xl">Quiz: {taskInfo?.name}</CardTitle>
+                    <CardDescription>Test your knowledge from the study session!</CardDescription>
                     <div className="flex items-center gap-4 pt-2">
                         <Progress value={progress} className="w-full" />
                         <span className="text-sm font-medium text-muted-foreground">{currentQuestionIndex + 1} / {quizQuestions.length}</span>
@@ -181,15 +191,15 @@ export default function QuizPage() {
                     </Button>
                      <AlertDialog>
                         <AlertDialogTrigger asChild>
-                             <Button variant="outline" className="text-yellow-500 border-yellow-500/50 hover:bg-yellow-500/10 hover:text-yellow-600" disabled={isAnswerRevealed}>
-                                <Lightbulb className="mr-2 h-4 w-4"/> Reveal Answer (-25 pts)
+                             <Button variant="outline" className="text-yellow-500 border-yellow-500/50 hover:bg-yellow-500/10 hover:text-yellow-600" disabled={isAnswerRevealed || coinsUsed >= 3}>
+                                <Lightbulb className="mr-2 h-4 w-4"/> Reveal Answer (-10 pts)
                             </Button>
                         </AlertDialogTrigger>
                         <AlertDialogContent>
                             <AlertDialogHeader>
                                 <AlertDialogTitle>Reveal Answer?</AlertDialogTitle>
                                 <AlertDialogDescription>
-                                    This will cost 25 points and reveal the correct answer for this question. You won't be able to change your answer afterwards. Are you sure?
+                                    This will cost 10 points and reveal the correct answer for this question. You won't be able to change your answer afterwards. You have {3 - coinsUsed} hints remaining. Are you sure?
                                 </AlertDialogDescription>
                             </AlertDialogHeader>
                             <AlertDialogFooter>
@@ -199,7 +209,7 @@ export default function QuizPage() {
                         </AlertDialogContent>
                     </AlertDialog>
                     <Button onClick={handleNext} className="gamify-button bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90">
-                        {currentQuestionIndex === quizQuestions.length - 1 ? 'Finish Quiz' : 'Next'}
+                        {currentQuestionIndex === quizQuestions.length - 1 ? 'View Results' : 'Next'}
                         <ArrowRight className="ml-2 h-4 w-4" />
                     </Button>
                 </CardFooter>

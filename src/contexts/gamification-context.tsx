@@ -74,6 +74,7 @@ interface GamificationContextType {
   
   // Actions
   addPoints: (amount: number) => void;
+  buyPowerUp: (powerUpId: string) => boolean;
   incrementStreak: () => void;
   resetStreak: () => void;
   earnBadge: (badgeId: string) => void;
@@ -84,6 +85,7 @@ interface GamificationContextType {
   checkQuestProgress: (questId: string, progress: number) => void;
   addStudyTime: (minutes: number) => void;
   unlockAchievement: (achievementId: string) => void;
+  calculateLevelFromPoints: (totalPoints: number) => number;
 }
 
 const GamificationContext = createContext<GamificationContextType | undefined>(undefined);
@@ -193,31 +195,60 @@ export function GamificationProvider({ children }: { children: ReactNode }) {
     }
   }, [user, points, level, streak, totalStudyTime, dailyGoal, badges, quests, achievements]);
 
-  // Level calculation based on points
+  // Level calculation based on points - NEW SYSTEM
+  // Level 1: 100 points, Level 2: 150 points, Level 3: 200 points (+50 for each level)
+  const calculateLevelFromPoints = useCallback((totalPoints: number) => {
+    if (totalPoints < 100) return 1;
+    
+    let currentLevel = 1;
+    let pointsNeeded = 100; // Points needed for level 2
+    let remainingPoints = totalPoints;
+    
+    while (remainingPoints >= pointsNeeded) {
+      remainingPoints -= pointsNeeded;
+      currentLevel++;
+      pointsNeeded = 100 + (currentLevel - 1) * 50; // Increase by 50 each level
+    }
+    
+    return currentLevel;
+  }, []);
+
+  // Define earnBadge first to avoid dependency issues
+  const earnBadge = useCallback((badgeId: string) => {
+    setBadges(prev => prev.map(badge => 
+      badge.id === badgeId && !badge.earned 
+        ? { ...badge, earned: true, earnedAt: new Date() } 
+        : badge
+    ));
+  }, []);
+
   useEffect(() => {
-    const newLevel = Math.floor(points / 100) + 1;
+    const newLevel = calculateLevelFromPoints(points);
     if (newLevel > level) {
       setLevel(newLevel);
+      // Award level up bonus: +100 points (but prevent infinite loop)
+      setPoints(prev => prev + 100);
+      
       // Award level up badge
       if (newLevel >= 5) {
         earnBadge('scholar');
       }
     }
-  }, [points, level]);
+  }, [points, level, calculateLevelFromPoints, earnBadge]);
 
   // Check for point-based badges
   useEffect(() => {
     if (points >= 100) {
       earnBadge('points-100');
     }
-  }, [points]);
+  }, [points, earnBadge]);
 
   // Check for streak badges
   useEffect(() => {
     if (streak >= 7) {
       earnBadge('streak-7');
     }
-  }, [streak]);
+  }, [streak, earnBadge]);
 
   // Power-up timer
   useEffect(() => {
@@ -238,27 +269,11 @@ export function GamificationProvider({ children }: { children: ReactNode }) {
 
   // Actions
   const addPoints = useCallback((amount: number) => {
-    // Check for active double points power-up
+    // Check for active 2x power-up
     const doublePointsActive = powerUps.some(p => p.id === 'double-points' && p.active);
     const actualAmount = doublePointsActive ? amount * 2 : amount;
-    setPoints(prev => prev + actualAmount);
+    setPoints(prev => Math.max(0, prev + actualAmount)); // Prevent negative points
   }, [powerUps]);
-
-  const incrementStreak = useCallback(() => {
-    setStreak(prev => prev + 1);
-  }, []);
-
-  const resetStreak = useCallback(() => {
-    setStreak(0);
-  }, []);
-
-  const earnBadge = useCallback((badgeId: string) => {
-    setBadges(prev => prev.map(badge => 
-      badge.id === badgeId && !badge.earned 
-        ? { ...badge, earned: true, earnedAt: new Date() } 
-        : badge
-    ));
-  }, []);
 
   const activatePowerUp = useCallback((powerUpId: string) => {
     setPowerUps(prev => prev.map(powerUp => {
@@ -274,6 +289,45 @@ export function GamificationProvider({ children }: { children: ReactNode }) {
       }
       return powerUp;
     }));
+  }, []);
+
+  // New function to handle power-up purchases
+  const buyPowerUp = useCallback((powerUpId: string) => {
+    const powerUpCost = 100; // All power-ups cost 100 points
+    
+    if (points >= powerUpCost) {
+      setPoints(prev => prev - powerUpCost);
+      activatePowerUp(powerUpId);
+      return true;
+    }
+    return false;
+  }, [points, activatePowerUp]);
+
+  const incrementStreak = useCallback(() => {
+    const today = new Date().toISOString().split('T')[0];
+    const lastStudyDate = localStorage.getItem('lastStudyDate');
+    
+    if (lastStudyDate !== today) {
+      // Check if it's consecutive days
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
+      const yesterdayStr = yesterday.toISOString().split('T')[0];
+      
+      if (lastStudyDate === yesterdayStr) {
+        // Consecutive day - increment streak
+        setStreak(prev => prev + 1);
+      } else if (lastStudyDate !== today) {
+        // Not consecutive - reset streak to 1
+        setStreak(1);
+      }
+      
+      localStorage.setItem('lastStudyDate', today);
+    }
+    // If already studied today, don't change streak
+  }, []);
+
+  const resetStreak = useCallback(() => {
+    setStreak(0);
   }, []);
 
   const completeQuest = useCallback((questId: string) => {
@@ -365,6 +419,7 @@ export function GamificationProvider({ children }: { children: ReactNode }) {
     dailyProgress,
     totalStudyTime,
     addPoints,
+    buyPowerUp,
     incrementStreak,
     resetStreak,
     earnBadge,
@@ -375,6 +430,7 @@ export function GamificationProvider({ children }: { children: ReactNode }) {
     checkQuestProgress,
     addStudyTime,
     unlockAchievement,
+    calculateLevelFromPoints,
   };
 
   return (

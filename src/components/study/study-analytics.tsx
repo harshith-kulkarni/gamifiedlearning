@@ -23,7 +23,10 @@ export function StudyAnalytics() {
 
       try {
         const token = localStorage.getItem('auth-token');
-        if (!token) return;
+        if (!token) {
+          setIsLoading(false);
+          return;
+        }
 
         const response = await fetch('/api/user/study-session', {
           headers: {
@@ -33,10 +36,14 @@ export function StudyAnalytics() {
 
         if (response.ok) {
           const data = await response.json();
-          setSessionData(data.sessions);
+          setSessionData(data.sessions || []);
+        } else {
+          console.error('Failed to fetch session data:', response.status);
+          setSessionData([]);
         }
       } catch (error) {
         console.error('Failed to fetch session data:', error);
+        setSessionData([]);
       } finally {
         setIsLoading(false);
       }

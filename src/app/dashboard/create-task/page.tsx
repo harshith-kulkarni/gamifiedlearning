@@ -116,7 +116,7 @@ export default function CreateTaskPage() {
                         console.error('Error pre-generating quiz questions:', error);
                     });
                 
-                router.push(`/dashboard/study/${newTaskId}`);
+                router.push(`/dashboard/session/${newTaskId}`);
             } catch (error) {
                 console.error('Error processing file:', error);
                 toast({ 

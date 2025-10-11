@@ -6,10 +6,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Loader2, Send, MessageSquare, AlertTriangle, Sparkles, Zap, Trophy, Star, Lightbulb, Coins } from 'lucide-react';
+import { Loader2, Send, MessageSquare, AlertTriangle, Sparkles, Zap, Trophy, Star, Lightbulb, Coins, Timer, Play, Pause } from 'lucide-react';
 import { aiChatbotAssistanceStream } from '@/ai/flows/ai-chatbot-assistance';
 import { Logo } from '../icons';
 import { useGamification } from '@/contexts/gamification-context';
+import { useStudySession } from '@/contexts/study-session-context';
 
 interface AIChatProps {
     pdfDataUri: string;
@@ -23,6 +24,7 @@ type Message = {
 // Memoize the AIChat component to prevent unnecessary re-renders
 export const AIChat = memo(function AIChat({ pdfDataUri }: AIChatProps) {
     const { points, addPoints, checkQuestProgress } = useGamification();
+    const { timerState } = useStudySession();
     const [messages, setMessages] = useState<Message[]>([
         { role: 'bot', content: "Hello! I'm your AI Study Master 🧠✨ Ask me anything about the document!" }
     ]);
@@ -118,6 +120,13 @@ export const AIChat = memo(function AIChat({ pdfDataUri }: AIChatProps) {
         setStreamingMessage('');
     }, []);
 
+    // Format time display for timer indicator
+    const formatTime = (seconds: number) => {
+        const minutes = Math.floor(seconds / 60);
+        const secs = seconds % 60;
+        return `${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    };
+
     return (
         <Card className="flex flex-col h-full transition-all duration-300 hover:shadow-xl gamify-card rounded-xl overflow-hidden border-2 border-primary/20">
             <CardHeader className="flex flex-row items-center justify-between bg-gradient-to-r from-primary/10 to-accent/10 pb-3">
@@ -129,6 +138,25 @@ export const AIChat = memo(function AIChat({ pdfDataUri }: AIChatProps) {
                     <CardTitle className="font-headline text-xl">AI Study Master</CardTitle>
                 </div>
                 <div className="flex items-center gap-3">
+                    {/* Timer Status Indicator */}
+                    <div className={`flex items-center gap-1 px-2 py-1 rounded-full transition-all duration-300 ${
+                        timerState.isActive 
+                            ? 'bg-green-100 dark:bg-green-900/30 animate-pulse' 
+                            : timerState.isPaused 
+                                ? 'bg-yellow-100 dark:bg-yellow-900/30' 
+                                : 'bg-gray-100 dark:bg-gray-900/30'
+                    }`}>
+                        {timerState.isActive ? (
+                            <Play className="h-4 w-4 text-green-500" />
+                        ) : timerState.isPaused ? (
+                            <Pause className="h-4 w-4 text-yellow-500" />
+                        ) : (
+                            <Timer className="h-4 w-4 text-gray-500" />
+                        )}
+                        <span className="text-sm font-bold font-mono">
+                            {formatTime(timerState.timeRemaining)}
+                        </span>
+                    </div>
                     <div className="flex items-center gap-1 bg-yellow-100 dark:bg-yellow-900/30 px-2 py-1 rounded-full">
                         <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />
                         <span className="text-sm font-bold">{points}</span>

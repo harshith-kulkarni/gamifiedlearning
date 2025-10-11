@@ -7,19 +7,19 @@ import { useGamification } from '@/contexts/gamification-context';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2, BookOpen, AlertTriangle, Zap, Star, Target, Trophy, Flame, Maximize2, Minimize2, MessageSquare, Timer } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { IntegratedTimer } from '@/components/study/integrated-timer';
+import { PersistentTimer } from '@/components/study/persistent-timer';
 import { Logo } from '@/components/icons';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { PowerUpActivator } from '@/components/gamification/power-up-activator';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+
 
 // Import AI chat directly instead of lazy loading to avoid visibility issues
 import { AIChat } from '@/components/study/ai-chat';
 
-export default function StudyPage() {
+export default function StudySessionPage() {
     const router = useRouter();
     const params = useParams();
     const { taskInfo, setTaskInfo, setStudyDuration, addPenalty, coinsUsed, penaltyPoints } = useStudySession();
@@ -34,34 +34,33 @@ export default function StudyPage() {
     useEffect(() => {
         setIsClient(true);
         if (!taskInfo) {
-            const storedData = sessionStorage.getItem(`task-${params.id}`);
+            const storedData = sessionStorage.getItem(`session-${params.sessionId}`);
             if (storedData) {
                 try {
                     const parsedData = JSON.parse(storedData);
                     setTaskInfo(parsedData.taskInfo);
                     setStudyDuration(parsedData.studyDuration);
                 } catch(e) {
-                    setError("Failed to load session data. Please start a new task.");
+                    setError("Failed to load session data. Please start a new session.");
                 }
             } else {
-                // If there's no session data, it could be a refresh.
-                // We shouldn't immediately redirect, but let other components handle it
-                // if they rely on taskInfo and it's not there.
+                // If there's no session data, redirect to create task
+                setError("No session data found. Please start a new session.");
             }
         }
     }, []);
     
     useEffect(() => {
         if(taskInfo){
-            sessionStorage.setItem(`task-${params.id}`, JSON.stringify(taskInfo));
+            sessionStorage.setItem(`session-${params.sessionId}`, JSON.stringify(taskInfo));
         }
-    }, [taskInfo, params.id])
+    }, [taskInfo, params.sessionId])
 
     useEffect(() => {
         if(error) {
             toast({
                 variant: 'destructive',
-                title: 'Error',
+                title: 'Session Error',
                 description: error,
             });
             router.replace('/dashboard/create-task');
@@ -72,16 +71,14 @@ export default function StudyPage() {
         setStudyDuration(duration);
         // Gamification: Update daily progress
         const minutesStudied = Math.floor(duration / 60);
-        // Add points for studying (2 points per minute)
-        addPoints(minutesStudied * 2);
         
         toast({
-            title: "Time's up! 🎉",
-            description: "Great job! Let's see what you've learned. Moving to the quiz...",
+            title: "Study Session Complete! 🎉",
+            description: "Great job! Let's test your knowledge with a quiz...",
             className: "animate-levelUp"
         });
-        router.push(`/dashboard/quiz/${params.id}`);
-    }, [setStudyDuration, addPoints, router, params.id, toast]);
+        router.push(`/dashboard/session/${params.sessionId}/quiz`);
+    }, [setStudyDuration, router, params.sessionId, toast]);
 
     const handleEarlyFinish = useCallback(() => {
         addPenalty(25); // 25 point penalty for ending session early
@@ -91,8 +88,8 @@ export default function StudyPage() {
             variant: 'destructive',
             className: "animate-shake"
         });
-        router.push(`/dashboard/quiz/${params.id}`);
-    }, [addPenalty, router, params.id, toast]);
+        router.push(`/dashboard/session/${params.sessionId}/quiz`);
+    }, [addPenalty, router, params.sessionId, toast]);
 
     if (!isClient) {
         return (
@@ -106,7 +103,7 @@ export default function StudyPage() {
         return (
             <div className="flex h-[80vh] items-center justify-center flex-col gap-4">
                 <p className="text-muted-foreground">Session data not found. Please start a new session.</p>
-                <Button onClick={() => router.push('/dashboard/create-task')}>Create New Task</Button>
+                <Button onClick={() => router.push('/dashboard/create-task')}>Create New Session</Button>
             </div>
         );
     }
@@ -210,33 +207,49 @@ export default function StudyPage() {
                 
                 {/* Right Panel - Timer and Chat */}
                 <div className="flex flex-col gap-4 flex-1 min-w-0 h-full">
-                    <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full flex flex-col">
-                        <TabsList className="grid w-full grid-cols-2">
-                            <TabsTrigger value="timer" className="flex items-center gap-2">
-                                <Timer className="h-4 w-4" />
-                                Timer
-                            </TabsTrigger>
-                            <TabsTrigger value="chat" className="flex items-center gap-2">
-                                <MessageSquare className="h-4 w-4" />
-                                AI Chat
-                            </TabsTrigger>
-                        </TabsList>
+                    {/* Tab Navigation */}
+                    <div className="flex space-x-1 bg-muted rounded-lg p-1">
+                        <Button
+                            variant={activeTab === 'timer' ? 'default' : 'ghost'}
+                            className="flex-1 flex items-center gap-2"
+                            onClick={() => setActiveTab('timer')}
+                        >
+                            <Timer className="h-4 w-4" />
+                            Timer
+                        </Button>
+                        <Button
+                            variant={activeTab === 'chat' ? 'default' : 'ghost'}
+                            className="flex-1 flex items-center gap-2"
+                            onClick={() => setActiveTab('chat')}
+                        >
+                            <MessageSquare className="h-4 w-4" />
+                            AI Chat
+                        </Button>
+                    </div>
+                    
+                    {/* Content Area - Both components always mounted */}
+                    <div className="flex-1 relative">
+                        {/* Timer - Always mounted, visibility controlled by CSS */}
+                        <div 
+                            className={`absolute inset-0 transition-opacity duration-200 ${
+                                activeTab === 'timer' ? 'opacity-100 z-10' : 'opacity-0 z-0 pointer-events-none'
+                            }`}
+                        >
+                            <PersistentTimer 
+                                onComplete={handleSessionComplete} 
+                                onEarlyFinish={handleEarlyFinish}
+                            />
+                        </div>
                         
-                        <TabsContent value="timer" className="flex-1 mt-4">
-                            <div className="h-full">
-                                <IntegratedTimer 
-                                    onComplete={handleSessionComplete} 
-                                    onEarlyFinish={handleEarlyFinish}
-                                />
-                            </div>
-                        </TabsContent>
-                        
-                        <TabsContent value="chat" className="flex-1 mt-4">
-                            <div className="h-full">
-                                <AIChat pdfDataUri={taskInfo.dataUri} />
-                            </div>
-                        </TabsContent>
-                    </Tabs>
+                        {/* AI Chat - Always mounted, visibility controlled by CSS */}
+                        <div 
+                            className={`absolute inset-0 transition-opacity duration-200 ${
+                                activeTab === 'chat' ? 'opacity-100 z-10' : 'opacity-0 z-0 pointer-events-none'
+                            }`}
+                        >
+                            <AIChat pdfDataUri={taskInfo.dataUri} />
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

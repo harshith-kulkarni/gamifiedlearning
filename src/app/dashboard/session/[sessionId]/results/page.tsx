@@ -11,7 +11,7 @@ import { Separator } from '@/components/ui/separator';
 import { analyzeQuizPerformance, type AnalyzeQuizPerformanceOutput } from '@/ai/flows/analyze-quiz-performance';
 import { Skeleton } from '@/components/ui/skeleton';
 
-export default function FeedbackPage() {
+export default function SessionResultsPage() {
     const router = useRouter();
     const params = useParams();
     const { taskInfo, quizQuestions, quizAnswers, coinsUsed, studyDuration, penaltyPoints, resetSession, addCompletedSession } = useStudySession();
@@ -19,6 +19,7 @@ export default function FeedbackPage() {
     const [isClient, setIsClient] = useState(false);
     const [analysis, setAnalysis] = useState<AnalyzeQuizPerformanceOutput | null>(null);
     const [isAnalyzing, setIsAnalyzing] = useState(true);
+    const [pointsAwarded, setPointsAwarded] = useState(false);
 
     useEffect(() => {
         setIsClient(true);
@@ -61,27 +62,23 @@ export default function FeedbackPage() {
         }, 0);
     }, [quizQuestions, quizAnswers]);
     
-    const quizPoints = useMemo(() => score * 10, [score]); // 10 points per correct answer
-    const coinPenalty = useMemo(() => coinsUsed * 25, [coinsUsed]); // 25 points penalty per coin used
-    const studyTimeBonus = useMemo(() => Math.floor(studyDuration / 60) * 2, [studyDuration]); // 2 points per minute studied
-    const perfectScoreBonus = useMemo(() => {
-        if (quizQuestions && score === quizQuestions.length) {
-            return 50; // 50 bonus points for perfect score
-        }
-        return 0;
-    }, [quizQuestions, score]);
+    // NEW COMPREHENSIVE SCORING SYSTEM
+    const correctAnswers = score;
+    const wrongAnswers = quizQuestions ? quizQuestions.length - score : 0;
+    
+    const correctAnswerPoints = useMemo(() => correctAnswers * 5, [correctAnswers]); // +5 points per correct answer
+    const wrongAnswerPenalty = useMemo(() => wrongAnswers * 1, [wrongAnswers]); // -1 point per wrong answer
+    const revealPenalty = useMemo(() => coinsUsed * 10, [coinsUsed]); // -10 points per answer reveal
     
     const finalPoints = useMemo(() => {
-        return quizPoints + studyTimeBonus + perfectScoreBonus - coinPenalty - penaltyPoints;
-    }, [quizPoints, studyTimeBonus, perfectScoreBonus, coinPenalty, penaltyPoints]);
+        return correctAnswerPoints - wrongAnswerPenalty - revealPenalty - penaltyPoints;
+    }, [correctAnswerPoints, wrongAnswerPenalty, revealPenalty, penaltyPoints]);
 
     // Add points when final points are calculated (only once)
     useEffect(() => {
-        let hasAddedPoints = false;
-        
-        if (finalPoints !== 0 && !hasAddedPoints) {
+        if (finalPoints !== 0 && !pointsAwarded && isClient) {
             addPoints(finalPoints);
-            hasAddedPoints = true;
+            setPointsAwarded(true);
             
             // Check for perfect score challenge
             if (quizQuestions && score === quizQuestions.length) {
@@ -93,17 +90,17 @@ export default function FeedbackPage() {
                 completeChallenge('speed-demon');
             }
         }
-    }, [finalPoints, addPoints, quizQuestions, score, studyDuration, completeChallenge]);
+    }, [finalPoints, addPoints, quizQuestions, score, studyDuration, completeChallenge, pointsAwarded, isClient]);
 
     useEffect(() => {
-        if(taskInfo && params.id) {
+        if(taskInfo && params.sessionId && !pointsAwarded) {
             addCompletedSession({
-                id: params.id as string,
+                id: params.sessionId as string,
                 taskName: taskInfo.name,
                 points: finalPoints
             })
         }
-    }, [taskInfo, params.id, finalPoints, addCompletedSession])
+    }, [taskInfo, params.sessionId, finalPoints, addCompletedSession, pointsAwarded])
 
     const formatDuration = useCallback((seconds: number) => {
         const h = Math.floor(seconds / 3600);
@@ -133,7 +130,7 @@ export default function FeedbackPage() {
                 <div className="flex flex-wrap items-center gap-4">
                     <div className="flex items-center gap-2 bg-white dark:bg-black/20 px-4 py-2 rounded-full shadow-md">
                         <Trophy className="h-5 w-5 text-primary" />
-                        <span className="font-bold">Quiz Results</span>
+                        <span className="font-bold">Session Complete!</span>
                     </div>
                     <div className="flex items-center gap-2 bg-yellow-100 dark:bg-yellow-900/30 px-4 py-2 rounded-full">
                         <Star className="h-5 w-5 text-yellow-500 fill-yellow-500" />
@@ -152,8 +149,8 @@ export default function FeedbackPage() {
             
             <Card className="shadow-lg gamify-card">
                 <CardHeader className="text-center">
-                    <CardTitle className="text-3xl font-headline">Session Complete!</CardTitle>
-                    <CardDescription>Here's a summary of your study session for '{taskInfo?.name || 'your task'}'</CardDescription>
+                    <CardTitle className="text-3xl font-headline">Excellent Work!</CardTitle>
+                    <CardDescription>Here's a summary of your study session for '{taskInfo?.name || 'your document'}'</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-8">
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-center">
@@ -188,28 +185,24 @@ export default function FeedbackPage() {
                         </CardHeader>
                         <CardContent className="space-y-3">
                             <div className="flex justify-between items-center">
-                                <span>Quiz Performance ({score}/{quizQuestions.length} correct)</span>
-                                <span className="font-bold text-green-600">+{quizPoints}</span>
+                                <span>Correct Answers ({correctAnswers} × 5 points)</span>
+                                <span className="font-bold text-green-600">+{correctAnswerPoints}</span>
                             </div>
-                            <div className="flex justify-between items-center">
-                                <span>Study Time Bonus ({Math.floor(studyDuration / 60)} minutes)</span>
-                                <span className="font-bold text-blue-600">+{studyTimeBonus}</span>
-                            </div>
-                            {perfectScoreBonus > 0 && (
+                            {wrongAnswers > 0 && (
                                 <div className="flex justify-between items-center">
-                                    <span>Perfect Score Bonus! 🎉</span>
-                                    <span className="font-bold text-purple-600">+{perfectScoreBonus}</span>
+                                    <span>Wrong Answers ({wrongAnswers} × -1 point)</span>
+                                    <span className="font-bold text-red-600">-{wrongAnswerPenalty}</span>
                                 </div>
                             )}
-                            {coinPenalty > 0 && (
+                            {coinsUsed > 0 && (
                                 <div className="flex justify-between items-center">
-                                    <span>Hint Penalties ({coinsUsed} hints used)</span>
-                                    <span className="font-bold text-red-600">-{coinPenalty}</span>
+                                    <span>Answer Reveals ({coinsUsed} × -10 points)</span>
+                                    <span className="font-bold text-red-600">-{revealPenalty}</span>
                                 </div>
                             )}
                             {penaltyPoints > 0 && (
                                 <div className="flex justify-between items-center">
-                                    <span>Early Finish Penalty</span>
+                                    <span>Early Session End Penalty</span>
                                     <span className="font-bold text-red-600">-{penaltyPoints}</span>
                                 </div>
                             )}

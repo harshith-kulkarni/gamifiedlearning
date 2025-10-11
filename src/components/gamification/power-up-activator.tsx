@@ -4,10 +4,28 @@ import { useGamification } from '@/contexts/gamification-context';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Badge } from '@/components/ui/badge';
-import { Zap, Clock, Lightbulb, Target } from 'lucide-react';
+import { Zap, Clock, Lightbulb, Target, Coins } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 
 export function PowerUpActivator() {
-  const { powerUps, activatePowerUp } = useGamification();
+  const { powerUps, activatePowerUp, buyPowerUp, points } = useGamification();
+  const { toast } = useToast();
+
+  const handleBuyPowerUp = (powerUpId: string, powerUpName: string) => {
+    const success = buyPowerUp(powerUpId);
+    if (success) {
+      toast({
+        title: "Power-up Purchased! ✨",
+        description: `${powerUpName} activated! (-100 points)`,
+      });
+    } else {
+      toast({
+        title: "Insufficient Points 💸",
+        description: "You need 100 points to purchase this power-up.",
+        variant: "destructive",
+      });
+    }
+  };
 
   return (
     <Popover>
@@ -45,21 +63,37 @@ export function PowerUpActivator() {
                       )}
                     </div>
                   </div>
-                  <Button
-                    size="sm"
-                    onClick={() => activatePowerUp(powerUp.id)}
-                    disabled={powerUp.active}
-                    className={powerUp.active ? 'opacity-50' : ''}
-                  >
-                    {powerUp.active ? 'Active' : 'Activate'}
-                  </Button>
+                  <div className="flex flex-col gap-1">
+                    <Button
+                      size="sm"
+                      onClick={() => handleBuyPowerUp(powerUp.id, powerUp.name)}
+                      disabled={powerUp.active || points < 100}
+                      className={powerUp.active ? 'opacity-50' : ''}
+                    >
+                      {powerUp.active ? 'Active' : (
+                        <div className="flex items-center gap-1">
+                          <Coins className="h-3 w-3" />
+                          <span>Buy (100)</span>
+                        </div>
+                      )}
+                    </Button>
+                    {points < 100 && !powerUp.active && (
+                      <span className="text-xs text-red-500">Need {100 - points} more points</span>
+                    )}
+                  </div>
                 </div>
               </div>
             ))}
           </div>
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <Zap className="h-3 w-3" />
-            <span>Power-ups can boost your learning experience</span>
+          <div className="flex items-center justify-between text-xs text-muted-foreground">
+            <div className="flex items-center gap-2">
+              <Zap className="h-3 w-3" />
+              <span>Power-ups cost 100 points each</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <Coins className="h-3 w-3 text-yellow-500" />
+              <span className="font-medium">{points} points</span>
+            </div>
           </div>
         </div>
       </PopoverContent>

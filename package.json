@@ -17,7 +17,16 @@
     "fix:passwords": "node scripts/fix-user-passwords.js",
     "test:auth": "node scripts/test-authentication.js",
     "test:login": "node scripts/test-login-api.js",
-    "db:reset": "npm run setup:db && npm run import:data"
+    "db:reset": "npm run setup:db && npm run import:data",
+    "setup:new-schema": "node scripts/setup-new-schema.js",
+    "migrate:new-schema": "node scripts/migrate-to-new-schema.js",
+    "test:functionality": "node scripts/test-new-functionality.js",
+    "test:login-new": "node scripts/test-login-with-new-service.js",
+    "test:api-login": "node scripts/test-api-login.js",
+    "test:new-user": "node scripts/test-new-user-creation.js",
+    "verify:all-users": "node scripts/verify-all-users-login.js",
+    "add:dummy-data": "node scripts/add-comprehensive-dummy-data.js",
+    "enhance:data": "node scripts/enhance-existing-data.js"
   },
   "dependencies": {
     "@genkit-ai/googleai": "^1.14.1",
