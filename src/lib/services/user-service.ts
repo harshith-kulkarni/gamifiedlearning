@@ -1,5 +1,6 @@
 import { getDatabase } from '@/lib/mongodb';
 import { User, UserProgress, StudySession, defaultUserProgress } from '@/lib/models/user';
+import { User as AtlasUser } from '@/lib/database-utils';
 import bcrypt from 'bcryptjs';
 import { ObjectId } from 'mongodb';
 

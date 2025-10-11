@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { UserService } from '@/lib/services/user-service';
+import { AtlasUserService } from '@/lib/services/atlas-user-service';
 import jwt from 'jsonwebtoken';
 
 async function getUserFromToken(request: NextRequest) {
@@ -21,7 +21,7 @@ async function getUserFromToken(request: NextRequest) {
 export async function GET(request: NextRequest) {
   try {
     const userId = await getUserFromToken(request);
-    const user = await UserService.getUserById(userId);
+    const user = await AtlasUserService.getUserById(userId);
 
     if (!user) {
       return NextResponse.json(
@@ -47,7 +47,7 @@ export async function PUT(request: NextRequest) {
     const userId = await getUserFromToken(request);
     const progressUpdate = await request.json();
 
-    await UserService.updateUserProgress(userId, progressUpdate);
+    await AtlasUserService.updateUserProgress(userId, progressUpdate);
 
     return NextResponse.json({
       success: true,

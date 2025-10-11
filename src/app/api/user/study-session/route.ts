@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { UserService } from '@/lib/services/user-service';
+import { AtlasUserService } from '@/lib/services/atlas-user-service';
 import { StudySession } from '@/lib/models/user';
 import jwt from 'jsonwebtoken';
 
@@ -34,48 +34,48 @@ export async function POST(request: NextRequest) {
       quizAnswers: sessionData.quizAnswers || [],
     };
 
-    await UserService.addStudySession(userId, studySession);
+    await AtlasUserService.addStudySession(userId, studySession);
 
     // Check for achievements and badges
-    const user = await UserService.getUserById(userId);
+    const user = await AtlasUserService.getUserById(userId);
     if (user) {
       // Check for first session achievement
       if (user.progress.studySessions.length === 1) {
-        await UserService.updateAchievement(userId, 'first-session', true);
+        await AtlasUserService.updateAchievement(userId, 'first-session', true);
       }
 
       // Check for marathon study achievement (2 hours in one session)
       if (studySession.duration >= 120) {
-        await UserService.updateAchievement(userId, 'marathon-study', true);
+        await AtlasUserService.updateAchievement(userId, 'marathon-study', true);
       }
 
       // Check for perfect score badge
       if (sessionData.score === 100) {
-        await UserService.updateBadge(userId, 'perfect-score', true);
+        await AtlasUserService.updateBadge(userId, 'perfect-score', true);
       }
 
       // Check for first quiz badge
       if (user.progress.studySessions.length === 1) {
-        await UserService.updateBadge(userId, 'first-quiz', true);
+        await AtlasUserService.updateBadge(userId, 'first-quiz', true);
       }
 
       // Update quest progress
-      await UserService.updateQuest(userId, 'study-60', studySession.duration);
-      await UserService.updateQuest(userId, 'quiz-5', 1);
+      await AtlasUserService.updateQuest(userId, 'study-60', studySession.duration);
+      await AtlasUserService.updateQuest(userId, 'quiz-5', 1);
 
       // Check for points badge
       if (user.progress.points >= 100) {
-        await UserService.updateBadge(userId, 'points-100', true);
+        await AtlasUserService.updateBadge(userId, 'points-100', true);
       }
 
       // Check for scholar badge (10 quizzes)
       if (user.progress.studySessions.length >= 10) {
-        await UserService.updateBadge(userId, 'scholar', true);
+        await AtlasUserService.updateBadge(userId, 'scholar', true);
       }
 
       // Check for streak badges
       if (user.progress.streak >= 7) {
-        await UserService.updateBadge(userId, 'streak-7', true);
+        await AtlasUserService.updateBadge(userId, 'streak-7', true);
       }
     }
 
@@ -95,7 +95,7 @@ export async function POST(request: NextRequest) {
 export async function GET(request: NextRequest) {
   try {
     const userId = await getUserFromToken(request);
-    const sessions = await UserService.getStudySessionsWithTimeData(userId);
+    const sessions = await AtlasUserService.getStudySessionsWithTimeData(userId);
 
     return NextResponse.json({
       sessions,

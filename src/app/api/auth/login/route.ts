@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { UserService } from '@/lib/services/user-service';
+import { AtlasUserService } from '@/lib/services/atlas-user-service';
 import jwt from 'jsonwebtoken';
 
 export async function POST(request: NextRequest) {
@@ -13,7 +13,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const user = await UserService.authenticateUser(email, password);
+    const user = await AtlasUserService.authenticateUser(email, password);
 
     if (!user) {
       return NextResponse.json(

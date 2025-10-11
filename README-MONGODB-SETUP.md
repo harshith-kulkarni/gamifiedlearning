@@ -10,16 +10,21 @@ This project now includes full MongoDB integration with user authentication, pro
    ```
 
 2. **Set up MongoDB** (Choose one option)
+   - **MongoDB Atlas (Recommended)**: Follow detailed instructions in `MONGODB-ATLAS-SETUP.md`
    - **Local MongoDB**: Follow instructions in `setup-mongodb.md`
-   - **MongoDB Atlas**: Create a free cluster at https://mongodb.com/atlas
    - **Docker**: `docker run -d -p 27017:27017 --name mongodb mongo:latest`
 
 3. **Configure Environment Variables**
-   Copy `.env.example` to `.env` and update:
+   Copy `.env.example` to `.env.local` and update:
    ```env
-   MONGODB_URI="mongodb://localhost:27017/studymaster"
+   # For MongoDB Atlas (recommended)
+   MONGODB_URI="mongodb+srv://username:password@cluster0.xxxxx.mongodb.net/studymaster?retryWrites=true&w=majority"
+   
+   # For Local MongoDB
+   # MONGODB_URI="mongodb://localhost:27017/studymaster"
+   
    NEXTAUTH_SECRET="your-super-secret-key-change-this"
-   NEXTAUTH_URL="http://localhost:9002"
+   NEXTAUTH_URL="http://localhost:3000"
    GEMINI_API_KEY="your-gemini-api-key"
    ```
 

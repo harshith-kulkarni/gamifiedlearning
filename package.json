@@ -9,7 +9,15 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test:atlas": "node scripts/test-atlas-connection.js",
+    "setup:db": "node scripts/database-schema.js",
+    "import:data": "node scripts/import-dummy-data.js",
+    "verify:db": "node scripts/verify-database.js",
+    "fix:passwords": "node scripts/fix-user-passwords.js",
+    "test:auth": "node scripts/test-authentication.js",
+    "test:login": "node scripts/test-login-api.js",
+    "db:reset": "npm run setup:db && npm run import:data"
   },
   "dependencies": {
     "@genkit-ai/googleai": "^1.14.1",

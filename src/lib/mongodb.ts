@@ -5,7 +5,11 @@ if (!process.env.MONGODB_URI) {
 }
 
 const uri = process.env.MONGODB_URI;
-const options = {};
+const options = {
+  maxPoolSize: 10, // Optimize for free tier connection limits
+  serverSelectionTimeoutMS: 5000, // Faster timeout for demos
+  socketTimeoutMS: 45000
+};
 
 let client: MongoClient;
 let clientPromise: Promise<MongoClient>;
@@ -33,4 +37,16 @@ export default clientPromise;
 export async function getDatabase(): Promise<Db> {
   const client = await clientPromise;
   return client.db('studymaster');
+}
+
+// Atlas connection validation
+export async function validateAtlasConnection(): Promise<void> {
+  try {
+    const client = await clientPromise;
+    await client.db('admin').command({ ping: 1 });
+    console.log('✅ Connected to MongoDB Atlas');
+  } catch (error) {
+    console.error('❌ Atlas connection failed:', error);
+    throw new Error('Failed to connect to MongoDB Atlas');
+  }
 }
