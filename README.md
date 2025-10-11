@@ -42,43 +42,60 @@ gamifiedlearning/
 
 ### Prerequisites
 
-- Node.js 18 or higher
-- npm (comes with Node.js)
-- MongoDB Atlas account
-- Google Gemini API key
+- **Node.js 18 or higher** (Check with `node --version`)
+- **npm** (comes with Node.js)
+- **Git** for version control
+- **MongoDB Atlas account** (free tier available)
+- **Google Gemini API key** (free tier available)
 
-### Installation
+### Quick Setup (Recommended)
 
-1. **Clone the repository:**
+For new developers, use the automated setup:
+
+```bash
+# 1. Clone the repository
+git clone <repository-url>
+cd gamifiedlearning
+
+# 2. Run automated setup
+npm run setup
+
+# 3. Verify everything is working
+npm run verify-setup
+
+# 4. Start development
+npm run dev
+```
+
+### Manual Setup (Alternative)
+
+If you prefer manual setup or encounter issues:
+
+1. **Clone and install:**
    ```bash
    git clone <repository-url>
    cd gamifiedlearning
-   ```
-
-2. **Install dependencies:**
-   ```bash
    npm install
    ```
 
-3. **Set up environment variables:**
-   Create a `.env.local` file in the project root:
-   ```env
-   GEMINI_API_KEY="your-gemini-api-key"
-   MONGODB_URI="your-mongodb-atlas-connection-string"
-   NEXTAUTH_SECRET="your-jwt-secret-key"
-   JWT_SECRET="your-jwt-secret-key"
-   JWT_EXPIRATION=7d
-   NEXTAUTH_URL=http://localhost:9003
+2. **Configure environment:**
+   ```bash
+   # Generate .env.local with secure defaults
+   npm run setup:env
+   
+   # Edit .env.local and add your API keys:
+   # - GEMINI_API_KEY: Get from https://makersuite.google.com/app/apikey
+   # - MONGODB_URI: Get from MongoDB Atlas dashboard
    ```
 
-4. **Set up the database:**
+3. **Set up database:**
    ```bash
    npm run setup:db
    ```
 
-5. **Fix user passwords (for test accounts):**
+4. **Verify setup:**
    ```bash
-   node scripts/fix-user-passwords.js
+   npm run verify-setup
    ```
 
 ### Development
@@ -88,7 +105,19 @@ Start the development server:
 npm run dev
 ```
 
-The application will be available at http://localhost:9003
+The application will be available at **http://localhost:9003**
+
+### Environment Variables
+
+Required variables in `.env.local`:
+
+| Variable | Description | Example |
+|----------|-------------|---------|
+| `GEMINI_API_KEY` | Google AI API key | `AIzaSy...` |
+| `MONGODB_URI` | MongoDB Atlas connection string | `mongodb+srv://...` |
+| `NEXTAUTH_SECRET` | JWT secret (auto-generated) | `d8e8f8a8...` |
+| `JWT_SECRET` | JWT secret (auto-generated) | `d8e8f8a8...` |
+| `NEXTAUTH_URL` | Application URL | `http://localhost:9003` |
 
 ### Test Credentials
 

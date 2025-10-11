@@ -76,7 +76,7 @@ export default function DashboardPage() {
           points: session.points,
         }));
         setTasks(formattedTasks);
-        console.log('✅ Dashboard data refreshed from database');
+        // Dashboard data refreshed from database
       } else {
         // Fallback to local sessions if API fails
         const formattedTasks = completedSessions.map((session, index) => ({
@@ -115,11 +115,11 @@ export default function DashboardPage() {
     fetchTasks();
   }, [completedSessions.length, fetchTasks]);
 
-  // Periodic refresh every 30 seconds for real-time updates
+  // Periodic refresh every 5 minutes for updates (reduced from 30 seconds)
   useEffect(() => {
     const interval = setInterval(() => {
       fetchTasks();
-    }, 30000);
+    }, 300000); // 5 minutes instead of 30 seconds
 
     return () => clearInterval(interval);
   }, [fetchTasks]);

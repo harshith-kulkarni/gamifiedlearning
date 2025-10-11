@@ -3,14 +3,19 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev -p 9003",
+    "dev": "node scripts/startup-check.js && next dev -p 9003",
     "build": "next build",
-    "start": "next start",
+    "start": "next start -p 9003",
     "lint": "next lint",
+    "type-check": "tsc --noEmit",
+    "setup": "npm run clean-install && npm run setup:env && npm run setup:db",
+    "setup:env": "node scripts/setup-env.js",
     "setup:db": "node scripts/setup-database.js",
     "test:connection": "node scripts/test-connection.js",
     "test:login": "node scripts/test-api-login.js",
-    "clean-install": "node scripts/clean-install.js"
+    "clean-install": "node scripts/clean-install.js",
+    "verify-setup": "node scripts/verify-setup.js",
+    "postinstall": "npm run type-check"
   },
   "dependencies": {
     "@genkit-ai/ai": "^1.21.0",

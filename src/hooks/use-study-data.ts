@@ -28,9 +28,9 @@ export function useStudyData() {
       return;
     }
 
-    // Prevent excessive API calls - only fetch if more than 30 seconds have passed
+    // Prevent excessive API calls - only fetch if more than 2 minutes have passed
     const now = Date.now();
-    if (!forceRefresh && now - lastFetch < 30000 && sessionData.length > 0) {
+    if (!forceRefresh && now - lastFetch < 120000 && sessionData.length > 0) {
       return;
     }
 
@@ -70,11 +70,11 @@ export function useStudyData() {
     fetchSessionData();
   }, [user]);
 
-  // Auto-refresh every 30 seconds
+  // Auto-refresh every 5 minutes (reduced from 30 seconds for better performance)
   useEffect(() => {
     const interval = setInterval(() => {
       fetchSessionData();
-    }, 30000);
+    }, 300000); // 5 minutes instead of 30 seconds
 
     return () => clearInterval(interval);
   }, [fetchSessionData]);

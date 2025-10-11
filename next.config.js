@@ -4,10 +4,12 @@
 const nextConfig = {
   /* config options here */
   typescript: {
-    ignoreBuildErrors: true,
+    // Only ignore build errors in development, catch them in production
+    ignoreBuildErrors: process.env.NODE_ENV === 'development',
   },
   eslint: {
-    ignoreDuringBuilds: true,
+    // Only ignore during builds in development
+    ignoreDuringBuilds: process.env.NODE_ENV === 'development',
   },
   // Optimize images
   images: {

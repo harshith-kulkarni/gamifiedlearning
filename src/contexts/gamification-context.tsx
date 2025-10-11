@@ -250,7 +250,7 @@ export function GamificationProvider({ children }: { children: ReactNode }) {
         updatedAt: new Date()
       };
 
-      console.log('🔄 Syncing progress to database:', progressData);
+      // Syncing progress to database
 
       const response = await fetch('/api/user/progress', {
         method: 'PUT',
@@ -266,7 +266,7 @@ export function GamificationProvider({ children }: { children: ReactNode }) {
         console.error('❌ Failed to sync progress:', response.status, errorData);
         return false;
       } else {
-        console.log('✅ Progress synced successfully');
+        // Progress synced successfully
         return true;
       }
     } catch (error) {
@@ -294,7 +294,7 @@ export function GamificationProvider({ children }: { children: ReactNode }) {
         const progress = data.progress;
 
         if (progress) {
-          console.log('📥 Fetched latest progress from database');
+          // Successfully fetched latest progress from database
 
           // Update local state with database values
           setPoints(progress.points || 0);
@@ -315,24 +315,24 @@ export function GamificationProvider({ children }: { children: ReactNode }) {
     return false;
   }, [user, getValidToken]);
 
-  // Real-time auto-sync progress when important data changes
+  // Debounced auto-sync progress when important data changes
   useEffect(() => {
     if (user && user.progress && points >= 0) {
       const timeoutId = setTimeout(() => {
         syncToDatabase();
-      }, 500); // Faster sync for real-time updates
+      }, 2000); // 2 seconds debounce to prevent excessive API calls
 
       return () => clearTimeout(timeoutId);
     }
   }, [user, points, level, streak, totalStudyTime, badges, quests, achievements, syncToDatabase]);
 
-  // Periodic sync to ensure consistency
+  // Periodic sync to ensure consistency (reduced frequency)
   useEffect(() => {
     if (!user) return;
 
     const interval = setInterval(() => {
       fetchLatestProgress();
-    }, 30000); // Fetch latest every 30 seconds
+    }, 300000); // Fetch latest every 5 minutes instead of 30 seconds
 
     return () => clearInterval(interval);
   }, [user, fetchLatestProgress]);
