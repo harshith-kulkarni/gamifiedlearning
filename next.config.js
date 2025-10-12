@@ -36,13 +36,29 @@ const nextConfig = {
   },
   // Enable compression
   compress: true,
+  // Experimental features for better builds
+  experimental: {
+    // Optimize package imports
+    optimizePackageImports: ['recharts', 'lucide-react'],
+  },
   // Enable webpack optimizations
-  webpack: (config) => {
+  webpack: (config, { isServer }) => {
     // Enable top-level await
     config.experiments = {
       ...config.experiments,
       topLevelAwait: true,
     };
+    
+    // Optimize for Vercel builds
+    if (!isServer) {
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        fs: false,
+        net: false,
+        tls: false,
+      };
+    }
+    
     return config;
   },
 };
