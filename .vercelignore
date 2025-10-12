@@ -2,8 +2,6 @@
 .kiro
 
 # Development files
-.env.local
-.env.development
 
 # Scripts (not needed for production)
 scripts/
