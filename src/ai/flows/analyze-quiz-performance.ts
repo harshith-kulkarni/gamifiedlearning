@@ -56,7 +56,6 @@ export async function analyzeQuizPerformance(input: AnalyzeQuizPerformanceInput)
   if (performanceCache.has(cacheKey)) {
     const cached = performanceCache.get(cacheKey);
     if (cached && Date.now() - cached.timestamp < 5 * 60 * 1000) { // 5 minutes TTL
-      console.log('Returning cached performance analysis');
       return cached.data;
     } else {
       // Expired, remove from cache
@@ -65,7 +64,6 @@ export async function analyzeQuizPerformance(input: AnalyzeQuizPerformanceInput)
   }
 
   // Generate new analysis
-  console.log('Generating new performance analysis');
   const result = await analyzeQuizPerformanceFlow(input);
   
   // Cache the result
@@ -106,7 +104,7 @@ const analyzeQuizPerformanceFlow = ai.defineFlow(
     inputSchema: AnalyzeQuizPerformanceInputSchema,
     outputSchema: AnalyzeQuizPerformanceOutputSchema,
   },
-  async (input) => {
+  async (input: AnalyzeQuizPerformanceInput) => {
     const { output } = await prompt({
         pdfDataUri: input.pdfDataUri,
         questions: JSON.stringify(input.questions, null, 2),

@@ -10,7 +10,7 @@
  */
 
 import {ai} from '@/ai/genkit';
-import {z} from 'genkit';
+import {z} from 'zod';
 
 const AiChatbotAssistanceInputSchema = z.object({
   pdfDataUri: z
@@ -38,7 +38,6 @@ export async function aiChatbotAssistance(input: AiChatbotAssistanceInput): Prom
   if (chatCache.has(cacheKey)) {
     const cached = chatCache.get(cacheKey);
     if (cached && Date.now() - cached.timestamp < 5 * 60 * 1000) { // 5 minutes TTL
-      console.log('Returning cached chat response');
       return cached.data;
     } else {
       // Expired, remove from cache
@@ -47,7 +46,6 @@ export async function aiChatbotAssistance(input: AiChatbotAssistanceInput): Prom
   }
 
   // Generate new response
-  console.log('Generating new chat response');
   const result = await aiChatbotAssistanceFlow(input);
   
   // Cache the result
@@ -68,7 +66,6 @@ export async function aiChatbotAssistanceStream(input: AiChatbotAssistanceInput)
   if (chatCache.has(cacheKey)) {
     const cached = chatCache.get(cacheKey);
     if (cached && Date.now() - cached.timestamp < 5 * 60 * 1000) { // 5 minutes TTL
-      console.log('Returning cached chat response via stream');
       // Return the cached response in chunks for streaming effect
       const cachedAnswer = cached.data.answer;
       const chunks = [];
@@ -81,8 +78,6 @@ export async function aiChatbotAssistanceStream(input: AiChatbotAssistanceInput)
       chatCache.delete(cacheKey);
     }
   }
-
-  console.log('Generating new chat response via stream');
   const result = await aiChatbotAssistanceFlow(input);
   
   // Cache the result
@@ -120,7 +115,7 @@ const aiChatbotAssistanceFlow = ai.defineFlow(
     inputSchema: AiChatbotAssistanceInputSchema,
     outputSchema: AiChatbotAssistanceOutputSchema,
   },
-  async input => {
+  async (input: AiChatbotAssistanceInput) => {
     const {output} = await prompt(input);
     return output!;
   }

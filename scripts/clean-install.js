@@ -31,23 +31,28 @@ try {
   if (fs.existsSync('node_modules')) {
     console.log('🗑️  Removing node_modules directory...');
     try {
-      // Try to remove with rimraf first if available
-      execSync('npx rimraf node_modules', { stdio: 'inherit' });
-    } catch (rimrafError) {
-      console.log('⚠️  rimraf not available, trying alternative methods...');
-      try {
-        // Try using Windows commands
-        execSync('cmd /c "rmdir /s /q node_modules"', { stdio: 'inherit' });
-      } catch (windowsError) {
-        console.log('⚠️  Could not remove node_modules automatically. Please remove it manually.');
+      // Use cross-platform removal
+      if (process.platform === 'win32') {
+        execSync('rmdir /s /q node_modules', { stdio: 'inherit', shell: true });
+      } else {
+        execSync('rm -rf node_modules', { stdio: 'inherit' });
       }
+    } catch (error) {
+      console.log('⚠️  Could not remove node_modules automatically. Please remove it manually.');
     }
     
     if (!fs.existsSync('node_modules')) {
       console.log('✅ node_modules directory removed');
-    } else {
-      console.log('⚠️  node_modules directory may still exist. Please remove it manually if needed.');
     }
+  }
+
+  // Clear npm cache to prevent issues
+  console.log('🧹 Clearing npm cache...');
+  try {
+    execSync('npm cache clean --force', { stdio: 'inherit' });
+    console.log('✅ npm cache cleared');
+  } catch (error) {
+    console.log('⚠️  Could not clear npm cache, continuing...');
   }
 
   console.log('\n📦 Installing dependencies...');
@@ -55,17 +60,19 @@ try {
   
   console.log('\n✅ Clean installation completed successfully!');
   console.log('\n📝 Next steps:');
-  console.log('1. Set up your .env.local file with database credentials');
-  console.log('2. Run: npm run setup:db');
-  console.log('3. Run: npm run dev');
-  console.log('4. Test login with: john.doe@example.com / password123');
+  console.log('1. Run: npm run setup:env (to create .env.local)');
+  console.log('2. Edit .env.local with your API keys');
+  console.log('3. Run: npm run setup:db (to initialize database)');
+  console.log('4. Run: npm run dev (to start development server)');
+  console.log('5. Visit: http://localhost:9003');
   
 } catch (error) {
   console.error('\n❌ Installation failed:', error.message);
   console.log('\n🔧 Troubleshooting:');
-  console.log('1. Make sure you have Node.js and npm installed');
-  console.log('2. Check your internet connection');
-  console.log('3. Try removing node_modules manually');
-  console.log('4. Run: npm install');
+  console.log('1. Ensure Node.js 18+ is installed: node --version');
+  console.log('2. Check npm is working: npm --version');
+  console.log('3. Check internet connection');
+  console.log('4. Try: npm install --legacy-peer-deps');
+  console.log('5. See TROUBLESHOOTING.md for more help');
   process.exit(1);
 }

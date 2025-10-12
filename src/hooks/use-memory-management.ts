@@ -49,9 +49,6 @@ export function useMemoryManagement(options: UseMemoryManagementOptions = {}) {
 
   const clearCache = useCallback(() => {
     cache.current.clear();
-    if (enableLogging) {
-      console.log('Cache cleared');
-    }
   }, [enableLogging]);
 
   // Timer management
@@ -87,7 +84,6 @@ export function useMemoryManagement(options: UseMemoryManagementOptions = {}) {
     // Log memory usage if enabled
     if (enableLogging) {
       logMemoryUsage('Memory cleanup performed');
-      console.log(`Cache size: ${cache.current.size}, Active timers: ${timers.current.size}`);
     }
 
     // Force garbage collection in development (if available)
@@ -153,7 +149,6 @@ export function useComponentLifecycle(componentName: string) {
 
   useEffect(() => {
     if (process.env.NODE_ENV === 'development') {
-      console.log(`${componentName} mounted`);
       logMemoryUsage(`${componentName} mount`);
     }
 
@@ -162,7 +157,6 @@ export function useComponentLifecycle(componentName: string) {
       performCleanup();
       
       if (process.env.NODE_ENV === 'development') {
-        console.log(`${componentName} unmounted`);
         logMemoryUsage(`${componentName} unmount`);
       }
     };
@@ -188,7 +182,7 @@ export function useDatasetManagement<T>(
     cacheKey = 'dataset',
   } = options;
 
-  const { setCache, getCache } = useMemoryManagement();
+  const { setCache } = useMemoryManagement();
   const currentPage = useRef(0);
   const virtualizedData = useRef<T[]>([]);
 

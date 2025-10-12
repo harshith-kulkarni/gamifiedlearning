@@ -84,8 +84,8 @@ const FlashcardViewerComponent = ({
   const cardRef = useRef<HTMLDivElement>(null);
 
   // Performance optimizations
-  const { isMounted } = useComponentLifecycle('FlashcardViewer');
-  const { addEventListenerWithCleanup, addTimer, clearTimer } = useMemoryManagement();
+  useComponentLifecycle('FlashcardViewer');
+  useMemoryManagement();
   const { flipCard, bounceCard, animationState } = useSmoothAnimations({
     duration: 300,
     onAnimationStart: () => {
@@ -117,36 +117,7 @@ const FlashcardViewerComponent = ({
   });
 
   // Memoized current card and state to prevent unnecessary re-renders
-  const currentCard = useMemo(() => flashcards[currentIndex], [flashcards, currentIndex]);
-  const currentCardState = useMemo(() => 
-    cardStates[currentCard?.id] || { isFlipped: false }, 
-    [cardStates, currentCard?.id]
-  );
-  const currentCardAction = useMemo(() => 
-    cardActions[currentCard?.id], 
-    [cardActions, currentCard?.id]
-  );
-
-  // Early return if no current card
-  if (!currentCard) {
-    return (
-      <Card className="h-full flex items-center justify-center">
-        <CardContent className="text-center space-y-4">
-          <BookOpen className="h-12 w-12 mx-auto text-muted-foreground" />
-          <div>
-            <h3 className="text-lg font-semibold">No Flashcard Available</h3>
-            <p className="text-muted-foreground">Unable to load the current flashcard.</p>
-          </div>
-          <Button onClick={onBackToPdf} variant="outline">
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to PDF
-          </Button>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  // Initialize card states with memoization
+  // Initialize card states with memoization - moved before early return
   const initialCardStates = useMemo(() => {
     const initialStates: Record<string, CardState> = {};
     flashcards.forEach(card => {
@@ -158,9 +129,19 @@ const FlashcardViewerComponent = ({
   }, [flashcards]);
 
   useEffect(() => {
-    console.log('🃏 Flashcards received:', flashcards.length, flashcards);
     setCardStates(initialCardStates);
   }, [initialCardStates]);
+
+  // Memoized current card calculations - moved before useEffect
+  const currentCard = useMemo(() => flashcards[currentIndex], [flashcards, currentIndex]);
+  const currentCardState = useMemo(() => 
+    cardStates[currentCard?.id] || { isFlipped: false }, 
+    [cardStates, currentCard?.id]
+  );
+  const currentCardAction = useMemo(() => 
+    cardActions[currentCard?.id], 
+    [cardActions, currentCard?.id]
+  );
 
   // Optimized keyboard navigation with proper cleanup
   useEffect(() => {
@@ -394,16 +375,7 @@ const FlashcardViewerComponent = ({
     }
   }, []);
 
-  const getActionColor = useCallback((action: CardAction) => {
-    switch (action) {
-      case 'saved':
-        return 'text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20';
-      case 'known':
-        return 'text-green-500 hover:text-green-600 hover:bg-green-50 dark:hover:bg-green-950/20';
-      case 'review':
-        return 'text-blue-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/20';
-    }
-  }, []);
+
 
   // Memoized progress calculation
   const progress = useMemo(() => 
@@ -423,7 +395,9 @@ const FlashcardViewerComponent = ({
     [actionStats.saved, actionStats.known, actionStats.review]
   );
 
-  // Early return with memoized empty state
+
+
+  // Early return with memoized empty state - moved after all hooks
   const emptyState = useMemo(() => (
     <Card className="h-full flex items-center justify-center">
       <CardContent className="text-center space-y-4">
@@ -891,7 +865,7 @@ const FlashcardViewerComponent = ({
                             marginTop: cardStyles.spacing 
                           }}
                         >
-                          "{currentCard.sourceText.substring(0, layoutSettings.isCompact ? 150 : 250)}..."
+                          "                          &quot;{currentCard.sourceText.substring(0, layoutSettings.isCompact ? 150 : 250)}...&quot;"
                         </div>
                       )}
                     </div>

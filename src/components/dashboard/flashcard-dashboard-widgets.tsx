@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import Link from 'next/link';
 import { 
   Library, 
@@ -18,8 +18,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
-import { SavedFlashcard, CardAction } from '@/lib/models/flashcard';
-// import { useFlashcardGamification } from '@/hooks/use-flashcard-gamification';
+import { SavedFlashcard } from '@/lib/models/flashcard';
 
 interface FlashcardStats {
   total: number;
@@ -51,116 +50,9 @@ export function FlashcardDashboardWidgets({ className }: FlashcardDashboardWidge
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isFetching, setIsFetching] = useState(false);
-  
-  // Gamification integration - temporarily disabled to prevent API pinging
-  // const { checkFlashcardBadges, trackFlashcardMastery } = useFlashcardGamification();
+  const hasFetched = useRef(false);
 
-  // Fetch flashcard statistics and recent activity
-  const fetchFlashcardData = useCallback(async () => {
-    // Prevent multiple simultaneous requests
-    if (isFetching) return;
-    
-    try {
-      setIsFetching(true);
-      setIsLoading(true);
-      setError(null);
-      
-      const token = localStorage.getItem('auth-token');
-      if (!token) {
-        setIsLoading(false);
-        return;
-      }
-
-      const response = await fetch('/api/study/save-flashcards', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-
-      if (!response.ok) {
-        if (response.status === 401) {
-          // Silent fail for auth issues - don't set error state
-          setIsLoading(false);
-          return;
-        }
-        if (response.status === 404) {
-          // No flashcards found - this is normal, not an error
-          setStats({
-            total: 0,
-            saved: 0,
-            known: 0,
-            review: 0,
-            totalReviews: 0,
-            averageReviews: 0,
-            recentActivity: 0,
-            studyStreak: 0,
-          });
-          setRecentFlashcards([]);
-          setIsLoading(false);
-          return;
-        }
-        throw new Error(`HTTP ${response.status}: Failed to fetch flashcard data`);
-      }
-
-      const data = await response.json();
-      if (data.success && data.data.flashcards) {
-        const flashcards = data.data.flashcards;
-        
-        // Calculate statistics
-        const total = flashcards.length;
-        const saved = flashcards.filter((f: SavedFlashcard) => f.status === 'saved').length;
-        const known = flashcards.filter((f: SavedFlashcard) => f.status === 'known').length;
-        const review = flashcards.filter((f: SavedFlashcard) => f.status === 'review').length;
-        const totalReviews = flashcards.reduce((acc: number, f: SavedFlashcard) => acc + f.reviewCount, 0);
-        const averageReviews = total > 0 ? Math.round((totalReviews / total) * 10) / 10 : 0;
-        
-        // Calculate recent activity (flashcards reviewed in last 7 days)
-        const sevenDaysAgo = new Date();
-        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-        const recentActivity = flashcards.filter((f: SavedFlashcard) => 
-          f.lastReviewed && new Date(f.lastReviewed) > sevenDaysAgo
-        ).length;
-
-        // Calculate study streak (consecutive days with flashcard activity)
-        const studyStreak = calculateStudyStreak(flashcards);
-
-        const newStats = {
-          total,
-          saved,
-          known,
-          review,
-          totalReviews,
-          averageReviews,
-          recentActivity,
-          studyStreak,
-        };
-
-        setStats(newStats);
-
-        // Get recent flashcards (last 5 created or reviewed)
-        const recent = flashcards
-          .sort((a: SavedFlashcard, b: SavedFlashcard) => {
-            const aDate = new Date(a.lastReviewed || a.createdAt);
-            const bDate = new Date(b.lastReviewed || b.createdAt);
-            return bDate.getTime() - aDate.getTime();
-          })
-          .slice(0, 5);
-        
-        setRecentFlashcards(recent);
-      }
-    } catch (err: any) {
-      console.error('Error fetching flashcard data:', err);
-      // Only set error if it's not a network issue
-      if (!err.message?.includes('Failed to fetch')) {
-        setError(err.message || 'Failed to load flashcard data');
-      }
-    } finally {
-      setIsLoading(false);
-      setIsFetching(false);
-    }
-  }, []); // Empty dependencies to prevent re-creation
-
-  // Calculate study streak based on flashcard activity
+  // Helper functions defined before useCallback
   const calculateStudyStreak = (flashcards: SavedFlashcard[]): number => {
     if (flashcards.length === 0) return 0;
 
@@ -168,10 +60,9 @@ export function FlashcardDashboardWidgets({ className }: FlashcardDashboardWidge
     today.setHours(0, 0, 0, 0);
     
     let streak = 0;
-    let currentDate = new Date(today);
+    const currentDate = new Date(today);
 
-    // Check each day going backwards
-    for (let i = 0; i < 30; i++) { // Check up to 30 days
+    for (let i = 0; i < 30; i++) {
       const dayStart = new Date(currentDate);
       const dayEnd = new Date(currentDate);
       dayEnd.setHours(23, 59, 59, 999);
@@ -186,7 +77,7 @@ export function FlashcardDashboardWidgets({ className }: FlashcardDashboardWidge
 
       if (hasActivity) {
         streak++;
-      } else if (i > 0) { // Don't break on first day (today) if no activity
+      } else if (i > 0) {
         break;
       }
 
@@ -196,37 +87,113 @@ export function FlashcardDashboardWidgets({ className }: FlashcardDashboardWidge
     return streak;
   };
 
-  // Load data on component mount only once
-  useEffect(() => {
-    // Only fetch if we have an auth token
-    const token = localStorage.getItem('auth-token');
-    if (token) {
-      fetchFlashcardData();
-    } else {
+  const calculateFlashcardStats = (flashcards: SavedFlashcard[]): FlashcardStats => {
+    const total = flashcards.length;
+    const saved = flashcards.filter((f: SavedFlashcard) => f.status === 'saved').length;
+    const known = flashcards.filter((f: SavedFlashcard) => f.status === 'known').length;
+    const review = flashcards.filter((f: SavedFlashcard) => f.status === 'review').length;
+    const totalReviews = flashcards.reduce((acc: number, f: SavedFlashcard) => acc + f.reviewCount, 0);
+    const averageReviews = total > 0 ? Math.round((totalReviews / total) * 10) / 10 : 0;
+    
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    const recentActivity = flashcards.filter((f: SavedFlashcard) => 
+      f.lastReviewed && new Date(f.lastReviewed) > sevenDaysAgo
+    ).length;
+
+    const studyStreak = calculateStudyStreak(flashcards);
+
+    return {
+      total,
+      saved,
+      known,
+      review,
+      totalReviews,
+      averageReviews,
+      recentActivity,
+      studyStreak,
+    };
+  };
+
+  const getRecentFlashcards = (flashcards: SavedFlashcard[]): SavedFlashcard[] => {
+    return flashcards
+      .sort((a: SavedFlashcard, b: SavedFlashcard) => {
+        const aDate = new Date(a.lastReviewed || a.createdAt);
+        const bDate = new Date(b.lastReviewed || b.createdAt);
+        return bDate.getTime() - aDate.getTime();
+      })
+      .slice(0, 5);
+  };
+
+  // Fetch flashcard statistics and recent activity
+  const fetchFlashcardData = useCallback(async () => {
+    if (isFetching) return;
+    
+    try {
+      setIsFetching(true);
+      setIsLoading(true);
+      setError(null);
+      
+      const token = localStorage.getItem('auth-token');
+      if (!token) {
+        setIsLoading(false);
+        hasFetched.current = true;
+        return;
+      }
+
+      const response = await fetch('/api/study/save-flashcards', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        if (response.status === 401) {
+          setIsLoading(false);
+          hasFetched.current = true;
+          return;
+        }
+        if (response.status === 404) {
+          setStats({
+            total: 0,
+            saved: 0,
+            known: 0,
+            review: 0,
+            totalReviews: 0,
+            averageReviews: 0,
+            recentActivity: 0,
+            studyStreak: 0,
+          });
+          setRecentFlashcards([]);
+          setIsLoading(false);
+          hasFetched.current = true;
+          return;
+        }
+        throw new Error(`HTTP ${response.status}: Failed to fetch flashcard data`);
+      }
+
+      const data = await response.json();
+      if (data.success && data.data.flashcards) {
+        const flashcards = data.data.flashcards;
+        
+        const calculatedStats = calculateFlashcardStats(flashcards);
+        setStats(calculatedStats);
+
+        const recentCards = getRecentFlashcards(flashcards);
+        setRecentFlashcards(recentCards);
+      }
+      hasFetched.current = true;
+    } catch (err: any) {
+      console.error('Error fetching flashcard data:', err);
+      if (!err.message?.includes('Failed to fetch')) {
+        setError(err.message || 'Failed to load flashcard data');
+      }
+      hasFetched.current = true;
+    } finally {
       setIsLoading(false);
+      setIsFetching(false);
     }
-  }, []); // Empty dependency array - only run once on mount
-
-  // Gamification integration temporarily disabled to prevent API pinging issues
-  // TODO: Re-implement gamification integration with proper memoization
-  // const gamificationStats = useMemo(() => ({
-  //   total: stats.total,
-  //   known: stats.known,
-  //   review: stats.review,
-  //   studyStreak: stats.studyStreak,
-  //   recentActivity: stats.recentActivity,
-  // }), [stats.total, stats.known, stats.review, stats.studyStreak, stats.recentActivity]);
-
-  // useEffect(() => {
-  //   if (gamificationStats.total > 0) {
-  //     try {
-  //       checkFlashcardBadges(gamificationStats);
-  //       trackFlashcardMastery(gamificationStats.known, gamificationStats.total);
-  //     } catch (error) {
-  //       console.warn('Gamification update failed:', error);
-  //     }
-  //   }
-  // }, [gamificationStats.total, gamificationStats.known, gamificationStats.review, gamificationStats.studyStreak, gamificationStats.recentActivity]);
+  }, []);
 
   // Memoized calculations
   const knowledgeProgress = useMemo(() => {
@@ -234,10 +201,17 @@ export function FlashcardDashboardWidgets({ className }: FlashcardDashboardWidge
     return Math.round((stats.known / stats.total) * 100);
   }, [stats.known, stats.total]);
 
-  const reviewProgress = useMemo(() => {
-    if (stats.total === 0) return 0;
-    return Math.round(((stats.saved + stats.known) / stats.total) * 100);
-  }, [stats.saved, stats.known, stats.total]);
+  useEffect(() => {
+    if (!hasFetched.current) {
+      const token = localStorage.getItem('auth-token');
+      if (token) {
+        fetchFlashcardData();
+      } else {
+        setIsLoading(false);
+        hasFetched.current = true;
+      }
+    }
+  }, []);
 
   if (isLoading) {
     return (

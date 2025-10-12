@@ -17,7 +17,7 @@ let clientPromise: Promise<MongoClient>;
 if (process.env.NODE_ENV === 'development') {
   // In development mode, use a global variable so that the value
   // is preserved across module reloads caused by HMR (Hot Module Replacement).
-  let globalWithMongo = global as typeof globalThis & {
+  const globalWithMongo = global as typeof globalThis & {
     _mongoClientPromise?: Promise<MongoClient>;
   };
 
@@ -44,9 +44,9 @@ export async function validateAtlasConnection(): Promise<void> {
   try {
     const client = await clientPromise;
     await client.db('admin').command({ ping: 1 });
-    console.log('✅ Connected to MongoDB Atlas');
-  } catch (error) {
-    console.error('❌ Atlas connection failed:', error);
+    // Connected to MongoDB Atlas successfully
+  } catch {
+    // Atlas connection failed
     throw new Error('Failed to connect to MongoDB Atlas');
   }
 }

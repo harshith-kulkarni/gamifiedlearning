@@ -50,53 +50,61 @@ gamifiedlearning/
 
 ### Quick Setup (Recommended)
 
-For new developers, use the automated setup:
+**New developers start here!** This setup ensures zero errors:
 
 ```bash
 # 1. Clone the repository
 git clone <repository-url>
-cd gamifiedlearning
+cd gamified-learning-platform
 
-# 2. Run automated setup
-npm run setup
+# 2. Install dependencies
+npm install
 
-# 3. Verify everything is working
+# 3. Set up environment (creates .env.local)
+npm run setup:env
+
+# 4. Edit .env.local with your API keys (see below)
+
+# 5. Initialize database
+npm run setup:db
+
+# 6. Verify everything works
 npm run verify-setup
 
-# 4. Start development
+# 7. Start development
 npm run dev
 ```
 
-### Manual Setup (Alternative)
+**Visit http://localhost:9003 to see your app!**
 
-If you prefer manual setup or encounter issues:
+### Required API Keys
 
-1. **Clone and install:**
-   ```bash
-   git clone <repository-url>
-   cd gamifiedlearning
-   npm install
-   ```
+Edit `.env.local` and add these keys:
 
-2. **Configure environment:**
-   ```bash
-   # Generate .env.local with secure defaults
-   npm run setup:env
-   
-   # Edit .env.local and add your API keys:
-   # - GEMINI_API_KEY: Get from https://makersuite.google.com/app/apikey
-   # - MONGODB_URI: Get from MongoDB Atlas dashboard
-   ```
+```env
+# Get from: https://makersuite.google.com/app/apikey
+GEMINI_API_KEY=your_actual_gemini_api_key
 
-3. **Set up database:**
-   ```bash
-   npm run setup:db
-   ```
+# Get from: MongoDB Atlas dashboard
+MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/database
+```
 
-4. **Verify setup:**
-   ```bash
-   npm run verify-setup
-   ```
+### Troubleshooting Installation
+
+If you encounter any issues:
+
+```bash
+# Clean installation (removes node_modules and reinstalls)
+npm run clean-install
+
+# If that fails, try legacy peer deps
+npm install --legacy-peer-deps
+
+# Run comprehensive diagnostics
+npm run verify-setup
+```
+
+**Note**: All major installation issues have been resolved. The setup should work smoothly for new developers.
 
 ### Development
 
@@ -227,38 +235,83 @@ Use these credentials to test the application:
 
 ## 🐛 Troubleshooting
 
-### Common Issues
+### Installation Issues
 
-1. **Dependency Installation Issues**
-   ```bash
-   npm run clean-install
-   ```
+**Problem**: `npm install` fails with dependency conflicts
+```bash
+# Solution 1: Clean install
+npm run clean-install
 
-2. **Database Connection Issues**
-   - Verify MONGODB_URI in .env.local
-   - Ensure your IP is whitelisted in MongoDB Atlas
-   - Test connection: `npm run test:connection`
+# Solution 2: Use legacy peer deps
+npm install --legacy-peer-deps
 
-3. **Authentication Issues**
-   ```bash
-   node scripts/fix-user-passwords.js
-   npm run test:login
-   ```
+# Solution 3: Clear cache and retry
+npm cache clean --force
+npm install
+```
 
-4. **Port Conflicts**
-   - Change the port in package.json dev script
-   - Kill processes using the port:
-     ```bash
-     netstat -ano | findstr :9003
-     taskkill /F /PID <process-id>
-     ```
+**Problem**: TypeScript compilation errors during install
+```bash
+# The postinstall script has been removed to prevent this
+# If you see TS errors, they won't block installation anymore
+```
 
-### Debugging Tools
+### Environment Issues
 
-- Browser developer tools for frontend debugging
-- MongoDB Atlas dashboard for database monitoring
-- Console logging in API routes for backend debugging
-- Network tab to inspect API requests
+**Problem**: Missing .env.local file
+```bash
+npm run setup:env
+# Then edit .env.local with your API keys
+```
+
+**Problem**: "Invalid API key" errors
+- Verify GEMINI_API_KEY in .env.local
+- Get a new key from https://makersuite.google.com/app/apikey
+- Ensure no extra spaces or quotes around the key
+
+### Database Issues
+
+**Problem**: Cannot connect to MongoDB
+```bash
+# Test your connection
+npm run test:connection
+
+# Common fixes:
+# 1. Check MONGODB_URI format in .env.local
+# 2. Whitelist your IP in MongoDB Atlas
+# 3. Ensure database user has proper permissions
+```
+
+**Problem**: Authentication fails with test users
+```bash
+# Reset test user passwords
+node scripts/fix-user-passwords.js
+npm run test:login
+```
+
+### Development Server Issues
+
+**Problem**: Port 9003 is already in use
+```bash
+# Find and kill the process (Windows)
+netstat -ano | findstr :9003
+taskkill /F /PID <process-id>
+
+# Or change the port in package.json dev script
+```
+
+**Problem**: App starts but shows errors
+```bash
+# Run comprehensive diagnostics
+npm run verify-setup
+```
+
+### Quick Fixes
+
+- **Clear browser cache** if you see old content
+- **Restart your terminal** after environment changes
+- **Check Node.js version**: Must be 18 or higher
+- **Disable antivirus** temporarily if file operations fail
 
 ## 🤝 Contributing
 

@@ -1,18 +1,14 @@
 'use client';
 
-import { useEffect, useState, Suspense, useCallback } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { useStudySession } from '@/contexts/study-session-context';
 import { useGamification } from '@/contexts/gamification-context';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, BookOpen, AlertTriangle, Zap, Star, Target, Trophy, Flame, Maximize2, Minimize2, MessageSquare, Timer, FileText, Sparkles } from 'lucide-react';
+import { Loader2, BookOpen, Zap, Star, Target, Trophy, Flame, Maximize2, Minimize2, MessageSquare, Timer, FileText, Sparkles } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { IntegratedTimer } from '@/components/study/integrated-timer';
-import { Logo } from '@/components/icons';
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
-import { Skeleton } from '@/components/ui/skeleton';
 import { PowerUpActivator } from '@/components/gamification/power-up-activator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { FlashcardGenerator, FlashcardViewer, AIChat } from '@/components/study';
@@ -21,8 +17,8 @@ import { Flashcard } from '@/lib/models/flashcard';
 export default function StudyPage() {
     const router = useRouter();
     const params = useParams();
-    const { taskInfo, setTaskInfo, setStudyDuration, addPenalty, coinsUsed, penaltyPoints } = useStudySession();
-    const { points, level, streak, badges, powerUps, quests, challenges, dailyGoal, dailyProgress, addPoints, activatePowerUp } = useGamification();
+    const { taskInfo, setTaskInfo, setStudyDuration, addPenalty } = useStudySession();
+    const { points, level, streak, addPoints } = useGamification();
     const { toast } = useToast();
     const [isClient, setIsClient] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -43,7 +39,7 @@ export default function StudyPage() {
                     const parsedData = JSON.parse(storedData);
                     setTaskInfo(parsedData.taskInfo);
                     setStudyDuration(parsedData.studyDuration);
-                } catch(e) {
+                } catch {
                     setError("Failed to load session data. Please start a new task.");
                 }
             } else {
@@ -52,7 +48,7 @@ export default function StudyPage() {
                 // if they rely on taskInfo and it's not there.
             }
         }
-    }, []);
+    }, [params.id, setStudyDuration, setTaskInfo, taskInfo]);
     
     useEffect(() => {
         if(taskInfo){
@@ -97,31 +93,15 @@ export default function StudyPage() {
         router.push(`/dashboard/quiz/${params.id}`);
     }, [addPenalty, router, params.id, toast]);
 
-    if (!isClient) {
-        return (
-            <div className="flex h-[80vh] items-center justify-center">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            </div>
-        );
-    }
-
-    if(!taskInfo){
-        return (
-            <div className="flex h-[80vh] items-center justify-center flex-col gap-4">
-                <p className="text-muted-foreground">Session data not found. Please start a new session.</p>
-                <Button onClick={() => router.push('/dashboard/create-task')}>Create New Task</Button>
-            </div>
-        );
-    }
-    
-    const toggleFullscreen = () => {
+    // All hooks must be called before any early returns
+    const toggleFullscreen = useCallback(() => {
         setIsFullscreen(!isFullscreen);
         setPdfWidth(isFullscreen ? 60 : 95);
-    };
+    }, [isFullscreen]);
 
-    const adjustPdfWidth = (newWidth: number) => {
+    const adjustPdfWidth = useCallback((newWidth: number) => {
         setPdfWidth(Math.max(30, Math.min(95, newWidth)));
-    };
+    }, []);
 
     // Flashcard system handlers
     const handleToggleToFlashcardGenerator = useCallback(() => {
@@ -140,6 +120,24 @@ export default function StudyPage() {
     const handleBackToGenerator = useCallback(() => {
         setCurrentView('flashcard-generator');
     }, []);
+
+    // Early returns after all hooks
+    if (!isClient) {
+        return (
+            <div className="flex h-[80vh] items-center justify-center">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+        );
+    }
+
+    if(!taskInfo){
+        return (
+            <div className="flex h-[80vh] items-center justify-center flex-col gap-4">
+                <p className="text-muted-foreground">Session data not found. Please start a new session.</p>
+                <Button onClick={() => router.push('/dashboard/create-task')}>Create New Task</Button>
+            </div>
+        );
+    }
 
     return (
         <div className="flex flex-col h-[calc(100vh-8rem)] gap-4 animate-fadeIn">

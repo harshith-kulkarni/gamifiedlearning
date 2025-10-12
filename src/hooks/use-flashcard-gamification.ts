@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect } from 'react';
 import { useGamification } from '@/contexts/gamification-context';
-import { SavedFlashcard, CardAction } from '@/lib/models/flashcard';
+import { CardAction } from '@/lib/models/flashcard';
 
 interface FlashcardGamificationHook {
   // Points for flashcard actions
@@ -31,9 +31,6 @@ export function useFlashcardGamification(): FlashcardGamificationHook {
     earnBadge,
     checkQuestProgress,
     unlockAchievement,
-    badges,
-    quests,
-    achievements,
   } = useGamification();
 
   // Points system for flashcard actions
@@ -155,32 +152,13 @@ export function useFlashcardGamification(): FlashcardGamificationHook {
     // but we can check and add flashcard-specific items here if needed
     
     // Check if flashcard badges exist, if not, they should be added to the default badges
-    const flashcardBadges = [
-      'first-flashcard',
-      'flashcard-collector',
-      'flashcard-hoarder',
-      'flashcard-library',
-      'knowledge-seeker',
-      'knowledge-master',
-      'flashcard-streak-7',
-      'flashcard-streak-30',
-      'active-reviewer',
-    ];
+    // Note: Badge definitions moved to gamification context
     
     // Check if flashcard quests exist
-    const flashcardQuests = [
-      'flashcard-creator',
-      'flashcard-reviewer',
-      'knowledge-master',
-      'ai-powered-learning',
-    ];
+    // Note: Quest definitions moved to gamification context
     
     // Check if flashcard achievements exist
-    const flashcardAchievements = [
-      'flashcard-apprentice',
-      'flashcard-expert',
-      'flashcard-master',
-    ];
+    // Note: Achievement definitions moved to gamification context
     
     // Note: In a real implementation, these would be added to the default
     // badges, quests, and achievements in the gamification context

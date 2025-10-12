@@ -80,7 +80,7 @@ export function StudyTimer({ onComplete, onEarlyFinish, children }: StudyTimerPr
                         });
 
                         if (response.ok) {
-                            console.log('Timer session saved successfully');
+                            // Timer session saved successfully
                         }
                     }
                 } catch (error) {
@@ -178,7 +178,7 @@ export function StudyTimer({ onComplete, onEarlyFinish, children }: StudyTimerPr
                             });
 
                             if (response.ok) {
-                                console.log('Partial timer session saved successfully');
+                                // Partial timer session saved successfully
                             }
                         }
                     } catch (error) {

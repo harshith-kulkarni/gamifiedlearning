@@ -26,7 +26,7 @@ export function IntegratedTimer({ onComplete, onEarlyFinish }: IntegratedTimerPr
     const [isActive, setIsActive] = useState(false);
     const [isPaused, setIsPaused] = useState(false);
     const [elapsedTime, setElapsedTime] = useState(0);
-    const [sessionStartTime, setSessionStartTime] = useState<Date | null>(null);
+    const [, setSessionStartTime] = useState<Date | null>(null);
     
     // Refs for cleanup
     const intervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -85,7 +85,7 @@ export function IntegratedTimer({ onComplete, onEarlyFinish }: IntegratedTimerPr
                     });
 
                     if (response.ok) {
-                        console.log('Study session saved successfully');
+                        // Study session saved successfully
                     }
                 }
             } catch (error) {
@@ -216,7 +216,7 @@ export function IntegratedTimer({ onComplete, onEarlyFinish }: IntegratedTimerPr
                             });
 
                             if (response.ok) {
-                                console.log('Partial study session saved successfully');
+                                // Partial study session saved successfully
                             }
                         }
                     } catch (error) {

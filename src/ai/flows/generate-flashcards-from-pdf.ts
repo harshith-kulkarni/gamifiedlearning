@@ -8,7 +8,7 @@
  */
 
 import {ai} from '@/ai/genkit';
-import {z} from 'genkit';
+import {z} from 'zod';
 
 const GenerateFlashcardsInputSchema = z.object({
   pdfDataUri: z
@@ -45,8 +45,6 @@ export type GenerateFlashcardsOutput = z.infer<typeof GenerateFlashcardsOutputSc
 const flashcardCache = new Map<string, { data: GenerateFlashcardsOutput; timestamp: number }>();
 
 export async function generateFlashcards(input: GenerateFlashcardsInput): Promise<GenerateFlashcardsOutput> {
-  console.log('🔄 Starting flashcard generation, maxCards:', input.maxCards);
-  
   // Create cache key from input
   const cacheKey = `${input.pdfDataUri.substring(0, 100)}_${input.maxCards}`;
   
@@ -54,7 +52,6 @@ export async function generateFlashcards(input: GenerateFlashcardsInput): Promis
   if (flashcardCache.has(cacheKey)) {
     const cached = flashcardCache.get(cacheKey);
     if (cached && Date.now() - cached.timestamp < 5 * 60 * 1000) { // 5 minutes TTL
-      console.log('📦 Returning cached flashcards');
       return cached.data;
     } else {
       // Expired, remove from cache
@@ -63,9 +60,7 @@ export async function generateFlashcards(input: GenerateFlashcardsInput): Promis
   }
 
   // Generate new flashcards
-  console.log('🤖 Generating new flashcards with AI...');
   const result = await generateFlashcardsFlow(input);
-  console.log('✅ AI generation completed, flashcards:', result.flashcards.length);
   
   // Cache the result
   flashcardCache.set(cacheKey, {
@@ -82,20 +77,25 @@ const flashcardPrompt = ai.definePrompt({
   output: {schema: GenerateFlashcardsOutputSchema},
   prompt: `You are an expert flashcard generator that creates study cards from PDF documents.
 
-Generate exactly {{maxCards}} flashcards from the document. Each flashcard must follow these strict requirements:
+Generate exactly {{maxCards}} flashcards from the document. Each flashcard must follow these STRICT requirements:
 
-CRITICAL: Character limits must be strictly followed:
-- Question (front): Maximum 100 characters - keep questions short and focused
-- Answer (back): Maximum 200 characters - provide concise but complete answers
-- Source text: Maximum 300 characters if provided
+CRITICAL CHARACTER LIMITS (will be enforced):
+- Question (front): MAXIMUM 100 characters - be concise and direct
+- Answer (back): MAXIMUM 200 characters - provide essential information only
+- Source text: MAXIMUM 300 characters if provided
 
-Guidelines:
+CONTENT GUIDELINES:
 - Focus on key concepts, definitions, and important facts
-- Use clear, direct language
-- Avoid unnecessary words or filler
+- Use clear, direct language without filler words
 - Each question should test one specific concept
 - Answers should be factual and precise
-- Confidence score should reflect how well the content supports the flashcard (0.0 to 1.0)
+- Avoid complex sentences - use simple, clear statements
+- Break down complex concepts into digestible parts
+- Confidence score should reflect content quality (0.0 to 1.0)
+
+EXAMPLES:
+Good Question (85 chars): "What architectural feature helps ResNet prevent vanishing gradients?"
+Good Answer (156 chars): "Skip connections (residual connections) that allow gradients to flow directly through layers, bypassing non-linear transformations."
 
 Document: {{media url=pdfDataUri}}`,
 });
@@ -106,32 +106,44 @@ const generateFlashcardsFlow = ai.defineFlow(
     inputSchema: GenerateFlashcardsInputSchema,
     outputSchema: GenerateFlashcardsOutputSchema,
   },
-  async input => {
+  async (input: GenerateFlashcardsInput) => {
     const startTime = Date.now();
-    console.log('🚀 Starting AI flow execution...');
     
     try {
       const {output} = await flashcardPrompt(input);
-      console.log('🎯 AI prompt completed, processing output...');
       
       if (!output || !output.flashcards) {
-        console.error('❌ No output or flashcards from AI');
         throw new Error('No flashcards generated from AI');
       }
       
-      console.log('📊 Raw flashcards from AI:', output.flashcards.length);
-      
       // Basic validation and enhancement with content truncation
-      const enhancedFlashcards = output.flashcards.map((card, index) => {
+      const enhancedFlashcards = output.flashcards.map((card: any, index: number) => {
         // Truncate content to meet schema requirements
         const truncateFront = (text: string) => {
+          if (!text) return '';
           if (text.length <= 100) return text;
-          return text.substring(0, 97) + '...';
+          // Find the last complete word within the limit
+          const truncated = text.substring(0, 97);
+          const lastSpace = truncated.lastIndexOf(' ');
+          const breakPoint = lastSpace > 80 ? lastSpace : 97;
+          return text.substring(0, breakPoint).trim() + '...';
         };
         
         const truncateBack = (text: string) => {
+          if (!text) return '';
           if (text.length <= 200) return text;
-          return text.substring(0, 197) + '...';
+          // Find the last complete sentence or phrase within the limit
+          const truncated = text.substring(0, 197);
+          const lastPeriod = truncated.lastIndexOf('.');
+          const lastComma = truncated.lastIndexOf(',');
+          const lastSpace = truncated.lastIndexOf(' ');
+          
+          // Use the best break point
+          const breakPoint = lastPeriod > 150 ? lastPeriod + 1 : 
+                           lastComma > 150 ? lastComma + 1 : 
+                           lastSpace > 150 ? lastSpace : 197;
+          
+          return text.substring(0, breakPoint).trim() + '...';
         };
         
         const truncateSource = (text?: string) => {
@@ -150,14 +162,11 @@ const generateFlashcardsFlow = ai.defineFlow(
         };
       });
 
-      console.log('✨ Enhanced flashcards ready:', enhancedFlashcards.length);
-
       return {
         flashcards: enhancedFlashcards,
         processingTime: Date.now() - startTime,
       };
     } catch (error) {
-      console.error('❌ Error in AI flow:', error);
       throw error;
     }
   }

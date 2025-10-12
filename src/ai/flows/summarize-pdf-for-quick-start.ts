@@ -45,7 +45,7 @@ const summarizePdfFlow = ai.defineFlow(
     inputSchema: SummarizePdfInputSchema,
     outputSchema: SummarizePdfOutputSchema,
   },
-  async input => {
+  async (input: SummarizePdfInput) => {
     const {output} = await summarizePdfPrompt(input);
     return {
       ...output,

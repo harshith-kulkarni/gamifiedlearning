@@ -9,9 +9,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
-import { Loader2, ArrowLeft, ArrowRight, Lightbulb, Coins, Trophy, Star, Zap } from 'lucide-react';
+import { Loader2, ArrowLeft, ArrowRight, Lightbulb, Coins, Trophy, Star } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { generateQuizQuestions, type GenerateQuizQuestionsOutput } from '@/ai/flows/generate-quiz-questions-from-pdf';
+import { generateQuizQuestions } from '@/ai/flows/generate-quiz-questions-from-pdf';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { cn } from '@/lib/utils';
 
@@ -19,8 +19,8 @@ export default function QuizPage() {
     const router = useRouter();
     const params = useParams();
     const { toast } = useToast();
-    const { taskInfo, setQuizQuestions: setContextQuizQuestions, quizQuestions, addQuizAnswer, getAnswerForQuestion, useCoin, coinsUsed } = useStudySession();
-    const { points, addPoints, completeChallenge, checkQuestProgress } = useGamification();
+    const { taskInfo, setQuizQuestions: setContextQuizQuestions, quizQuestions, addQuizAnswer, getAnswerForQuestion, coinsUsed } = useStudySession();
+    const { points } = useGamification();
 
     const [isLoading, setIsLoading] = useState(true);
     const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
@@ -90,7 +90,6 @@ export default function QuizPage() {
     }, [currentQuestionIndex]);
 
     const handleRevealAnswer = useCallback(() => {
-        useCoin();
         // Don't apply penalty here - will be calculated in feedback page
         setRevealedAnswers(prev => [...prev, currentQuestionIndex]);
         
@@ -98,7 +97,7 @@ export default function QuizPage() {
             title: "Answer Revealed! 💡",
             description: "The correct answer is now highlighted. (-25 points)",
         });
-    }, [useCoin, currentQuestionIndex, toast]);
+    }, [currentQuestionIndex, toast]);
 
     const isAnswerRevealed = useMemo(() => revealedAnswers.includes(currentQuestionIndex), [revealedAnswers, currentQuestionIndex]);
 
@@ -145,7 +144,7 @@ export default function QuizPage() {
             <Card className="shadow-lg gamify-card">
                 <CardHeader>
                     <CardTitle className="font-headline text-2xl">Quiz Time: {taskInfo?.name}</CardTitle>
-                    <CardDescription>Test your knowledge. Let's see what you've learned!</CardDescription>
+                    <CardDescription>Test your knowledge. Let&apos;s see what you&apos;ve learned!</CardDescription>
                     <div className="flex items-center gap-4 pt-2">
                         <Progress value={progress} className="w-full" />
                         <span className="text-sm font-medium text-muted-foreground">{currentQuestionIndex + 1} / {quizQuestions.length}</span>
@@ -159,7 +158,7 @@ export default function QuizPage() {
                         className="space-y-2"
                         disabled={isAnswerRevealed}
                     >
-                        {currentQuestion?.options.map((option, i) => {
+                        {currentQuestion?.options.map((option: string, i: number) => {
                              const isCorrect = option === currentQuestion.answer;
                              const isSelected = selectedAnswer === option;
                             return (
@@ -189,7 +188,7 @@ export default function QuizPage() {
                             <AlertDialogHeader>
                                 <AlertDialogTitle>Reveal Answer?</AlertDialogTitle>
                                 <AlertDialogDescription>
-                                    This will cost 25 points and reveal the correct answer for this question. You won't be able to change your answer afterwards. Are you sure?
+                                    This will cost 25 points and reveal the correct answer for this question. You won&apos;t be able to change your answer afterwards. Are you sure?
                                 </AlertDialogDescription>
                             </AlertDialogHeader>
                             <AlertDialogFooter>

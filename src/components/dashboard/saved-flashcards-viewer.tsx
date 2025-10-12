@@ -1,13 +1,13 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo, memo } from 'react';
-import { Search, Filter, RefreshCw, BookOpen, Eye, Trash2, RotateCcw } from 'lucide-react';
+import { Search, Filter, RefreshCw, BookOpen, Eye, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Skeleton } from '@/components/ui/skeleton';
 import { SavedFlashcard, CardAction } from '@/lib/models/flashcard';
@@ -44,8 +44,18 @@ const SavedFlashcardsViewerComponent = ({ className }: SavedFlashcardsViewerProp
   const [selectedFlashcard, setSelectedFlashcard] = useState<SavedFlashcard | null>(null);
   const [isReviewMode, setIsReviewMode] = useState(false);
 
+  // Rate limiting for API calls
+  const [lastFetchTime, setLastFetchTime] = useState(0);
+
   // Fetch saved flashcards from API
   const fetchFlashcards = useCallback(async () => {
+    // Prevent excessive API calls - minimum 2 seconds between fetches
+    const now = Date.now();
+    if (now - lastFetchTime < 2000) {
+      return;
+    }
+    setLastFetchTime(now);
+
     try {
       setIsLoading(true);
       setError(null);
@@ -79,7 +89,7 @@ const SavedFlashcardsViewerComponent = ({ className }: SavedFlashcardsViewerProp
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [lastFetchTime]);
 
   // Memoized flashcard statistics calculation
   const calculatedStats = useMemo(() => {
@@ -133,10 +143,11 @@ const SavedFlashcardsViewerComponent = ({ className }: SavedFlashcardsViewerProp
     setFilteredFlashcards(memoizedFilteredFlashcards);
   }, [memoizedFilteredFlashcards]);
 
-  // Initial load
+  // Initial load - only run once on mount
   useEffect(() => {
     fetchFlashcards();
-  }, [fetchFlashcards]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Empty dependency array to run only once
 
   // Update flashcard status
   const updateFlashcardStatus = async (flashcardId: string, newStatus: CardAction) => {
@@ -243,15 +254,7 @@ const SavedFlashcardsViewerComponent = ({ className }: SavedFlashcardsViewerProp
     }));
   }, []);
 
-  // Handle card actions in review mode
-  const handleCardAction = (cardId: string, action: CardAction) => {
-    updateFlashcardStatus(cardId, action);
-  };
 
-  // Handle saving flashcards (no-op for saved flashcards)
-  const handleSaveFlashcards = () => {
-    // No-op since these are already saved
-  };
 
   // Exit review mode
   const exitReviewMode = () => {

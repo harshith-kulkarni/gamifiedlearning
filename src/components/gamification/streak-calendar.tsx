@@ -77,7 +77,7 @@ export function StreakCalendar() {
             </div>
             <div className="w-full max-w-md">
               <div className="flex justify-between text-sm mb-1">
-                <span>Today's Goal</span>
+                <span>Today&apos;s Goal</span>
                 <span>{dailyProgress}/{dailyGoal} min</span>
               </div>
               <div className="w-full bg-muted rounded-full h-2.5">

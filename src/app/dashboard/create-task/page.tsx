@@ -107,9 +107,6 @@ export default function CreateTaskPage() {
                     .then((quizResult) => {
                         if (quizResult.success && quizResult.questions) {
                             setPrefetchedQuizQuestions(quizResult.questions);
-                            console.log('Quiz questions pre-generated successfully');
-                        } else {
-                            console.log('Failed to pre-generate quiz questions:', quizResult.error);
                         }
                     })
                     .catch((error) => {

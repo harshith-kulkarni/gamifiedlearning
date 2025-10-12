@@ -5,34 +5,14 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { 
-  Trophy, 
-  Zap, 
-  Star, 
-  Flame, 
-  Target, 
-  Medal, 
   Rocket, 
-  Crown,
-  CheckCircle,
-  Circle,
-  Lock,
-  Clock,
-  BookOpen,
-  MessageSquare
+  Target
 } from 'lucide-react';
 
 export function ChallengeTracker() {
-  const { challenges, quests, badges } = useGamification();
+  const { challenges, quests } = useGamification();
   
-  const getChallengeIcon = (iconName: string) => {
-    switch (iconName) {
-      case '🏃': return <Rocket className="h-5 w-5" />;
-      case '⭐': return <Star className="h-5 w-5" />;
-      case '🤖': return <MessageSquare className="h-5 w-5" />;
-      case '🌅': return <Crown className="h-5 w-5" />;
-      default: return <Target className="h-5 w-5" />;
-    }
-  };
+
 
   return (
     <div className="space-y-6">

@@ -153,7 +153,7 @@ export default function FeedbackPage() {
             <Card className="shadow-lg gamify-card">
                 <CardHeader className="text-center">
                     <CardTitle className="text-3xl font-headline">Session Complete!</CardTitle>
-                    <CardDescription>Here's a summary of your study session for '{taskInfo?.name || 'your task'}'</CardDescription>
+                    <CardDescription>Here&apos;s a summary of your study session for &apos;{taskInfo?.name || 'your task'}&apos;</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-8">
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-center">

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -71,7 +71,7 @@ export function PersistentTimer({ onComplete, onEarlyFinish }: PersistentTimerPr
                             quizAnswers: [] // Empty for timer completion
                         };
 
-                        console.log('Saving timer completion session:', sessionData);
+                        // Saving timer completion session
 
                         const response = await fetch('/api/user/study-session', {
                             method: 'POST',
@@ -83,8 +83,8 @@ export function PersistentTimer({ onComplete, onEarlyFinish }: PersistentTimerPr
                         });
 
                         if (response.ok) {
-                            const result = await response.json();
-                            console.log('Timer session saved successfully:', result);
+                            await response.json();
+                            // Timer session saved successfully
                         } else {
                             const errorData = await response.text();
                             console.error('Failed to save timer session:', response.status, errorData);
@@ -191,7 +191,7 @@ export function PersistentTimer({ onComplete, onEarlyFinish }: PersistentTimerPr
                                 quizAnswers: [] // Empty for early finish
                             };
 
-                            console.log('Saving partial session:', sessionData);
+                            // Saving partial session
 
                             const response = await fetch('/api/user/study-session', {
                                 method: 'POST',
@@ -203,8 +203,8 @@ export function PersistentTimer({ onComplete, onEarlyFinish }: PersistentTimerPr
                             });
 
                             if (response.ok) {
-                                const result = await response.json();
-                                console.log('Partial session saved successfully:', result);
+                                await response.json();
+                                // Partial session saved successfully
                             } else {
                                 const errorData = await response.text();
                                 console.error('Failed to save partial session:', response.status, errorData);

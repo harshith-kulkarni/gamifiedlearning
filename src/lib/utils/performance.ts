@@ -122,7 +122,6 @@ export class PerformanceMonitor {
     }
     
     const duration = performance.now() - startTime;
-    console.log(`${name}: ${duration.toFixed(2)}ms`);
     return duration;
   }
 
@@ -132,13 +131,18 @@ export class PerformanceMonitor {
 }
 
 // Memory usage monitoring (development only)
-export function logMemoryUsage(label: string): void {
+export function logMemoryUsage(_label: string): void {
   if (process.env.NODE_ENV === 'development' && 'memory' in performance) {
     const memory = (performance as any).memory;
-    console.log(`${label} - Memory Usage:`, {
-      used: `${Math.round(memory.usedJSHeapSize / 1024 / 1024)} MB`,
-      total: `${Math.round(memory.totalJSHeapSize / 1024 / 1024)} MB`,
-      limit: `${Math.round(memory.jsHeapSizeLimit / 1024 / 1024)} MB`,
+    // Memory usage tracking for development
+    // const usage = {
+    //   used: Math.round(memory.usedJSHeapSize / 1024 / 1024),
+    //   total: Math.round(memory.totalJSHeapSize / 1024 / 1024),
+    //   limit: Math.round(memory.jsHeapSizeLimit / 1024 / 1024)
+    // };
+    // Store or process memory data as needed
+    console.debug('Memory usage tracked for:', _label, {
+      used: Math.round(memory.usedJSHeapSize / 1024 / 1024) + 'MB'
     });
   }
 }

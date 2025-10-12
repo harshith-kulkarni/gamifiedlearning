@@ -1,18 +1,14 @@
 'use client';
 
-import { useEffect, useState, Suspense, useCallback } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { useStudySession } from '@/contexts/study-session-context';
 import { useGamification } from '@/contexts/gamification-context';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, BookOpen, AlertTriangle, Zap, Star, Target, Trophy, Flame, Maximize2, Minimize2, MessageSquare, Timer, Sparkles } from 'lucide-react';
+import { Loader2, BookOpen, Zap, Star, Target, Trophy, Flame, Maximize2, Minimize2, MessageSquare, Timer, Sparkles } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { PersistentTimer } from '@/components/study/persistent-timer';
-import { Logo } from '@/components/icons';
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
-import { Skeleton } from '@/components/ui/skeleton';
 import { PowerUpActivator } from '@/components/gamification/power-up-activator';
 
 
@@ -25,8 +21,8 @@ import { Flashcard } from '@/lib/models/flashcard';
 export default function StudySessionPage() {
     const router = useRouter();
     const params = useParams();
-    const { taskInfo, setTaskInfo, setStudyDuration, addPenalty, coinsUsed, penaltyPoints } = useStudySession();
-    const { points, level, streak, badges, powerUps, quests, challenges, dailyGoal, dailyProgress, addPoints, activatePowerUp } = useGamification();
+    const { taskInfo, setTaskInfo, setStudyDuration, addPenalty } = useStudySession();
+    const { points, level, streak } = useGamification();
     const { toast } = useToast();
     const [isClient, setIsClient] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -40,7 +36,6 @@ export default function StudySessionPage() {
     const handleSessionComplete = useCallback((duration: number) => {
         setStudyDuration(duration);
         // Gamification: Update daily progress
-        const minutesStudied = Math.floor(duration / 60);
         
         toast({
             title: "Study Session Complete! 🎉",
@@ -84,7 +79,7 @@ export default function StudySessionPage() {
                     const parsedData = JSON.parse(storedData);
                     setTaskInfo(parsedData.taskInfo);
                     setStudyDuration(parsedData.studyDuration);
-                } catch(e) {
+                } catch {
                     setError("Failed to load session data. Please start a new session.");
                 }
             } else {

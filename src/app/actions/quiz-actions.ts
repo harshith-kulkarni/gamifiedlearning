@@ -10,11 +10,9 @@ import { aiChatbotAssistance } from '@/ai/flows/ai-chatbot-assistance';
  */
 export async function pregenerateQuizQuestions(pdfDataUri: string) {
   try {
-    console.log('Pregenerating quiz questions for PDF');
     const result = await generateQuizQuestions({ pdfDataUri });
     return { success: true, questions: result.questions };
-  } catch (error) {
-    console.error('Failed to pregenerate quiz questions:', error);
+  } catch {
     return { success: false, error: 'Failed to generate quiz questions' };
   }
 }
@@ -29,15 +27,13 @@ export async function preanalyzeQuizPerformance(
   userAnswers: any[]
 ) {
   try {
-    console.log('Pre-analyzing quiz performance');
     const result = await analyzeQuizPerformance({ 
       pdfDataUri, 
       questions, 
       userAnswers 
     });
     return { success: true, analysis: result };
-  } catch (error) {
-    console.error('Failed to pre-analyze quiz performance:', error);
+  } catch {
     return { success: false, error: 'Failed to analyze performance' };
   }
 }
@@ -48,11 +44,9 @@ export async function preanalyzeQuizPerformance(
  */
 export async function pregenerateAIResponse(pdfDataUri: string, question: string) {
   try {
-    console.log('Pregenerating AI response for question:', question);
     const result = await aiChatbotAssistance({ pdfDataUri, question });
     return { success: true, answer: result.answer };
-  } catch (error) {
-    console.error('Failed to pre-generate AI response:', error);
+  } catch {
     return { success: false, error: 'Failed to generate AI response' };
   }
 }

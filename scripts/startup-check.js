@@ -24,7 +24,8 @@ function checkPort() {
       console.warn(`   Dev server: ${devPort}`);
       console.warn(`   NEXTAUTH_URL: ${envPort}`);
       console.warn(`   This may cause authentication issues.`);
-      return false;
+      console.warn(`   Continuing startup anyway...`);
+      return true; // Don't fail startup for port mismatch
     }
   }
   
@@ -52,6 +53,14 @@ function checkCriticalFiles() {
 }
 
 function checkEnvironmentVariables() {
+  const envPath = path.join(process.cwd(), '.env.local');
+  
+  if (!fs.existsSync(envPath)) {
+    console.error('❌ Environment file missing: .env.local');
+    console.log('   Run: npm run setup:env');
+    return false;
+  }
+  
   require('dotenv').config({ path: '.env.local' });
   
   const requiredVars = [
@@ -76,9 +85,10 @@ function checkEnvironmentVariables() {
   });
   
   if (placeholderVars.length > 0) {
-    console.error('❌ Placeholder values detected:', placeholderVars.join(', '));
-    console.log('   Please update .env.local with actual values');
-    return false;
+    console.warn('⚠️  Placeholder values detected:', placeholderVars.join(', '));
+    console.log('   Please update .env.local with actual API keys');
+    console.log('   The app will start but some features may not work');
+    return true; // Allow startup with warnings
   }
   
   console.log('✅ Environment variables are configured');

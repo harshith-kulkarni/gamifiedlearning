@@ -52,9 +52,8 @@ export function useStudyData() {
         const data = await response.json();
         setSessionData(data.sessions || []);
         setLastFetch(now);
-        console.log('✅ Study data refreshed from database');
       } else {
-        console.error('Failed to fetch session data:', response.status);
+        // Failed to fetch session data
         setSessionData([]);
       }
     } catch (error) {
@@ -147,12 +146,7 @@ export function useStudyData() {
     const stats = getStats();
     const trendData = getTrendData(7);
     
-    console.log('📊 Data Validation Report:');
-    console.log('- Total Sessions:', stats.totalSessions);
-    console.log('- Total Study Time:', stats.totalStudyTime, 'minutes');
-    console.log('- Average Score:', stats.averageScore.toFixed(1), '%');
-    console.log('- Trend Data Points:', trendData.length);
-    console.log('- Last 7 Days Total:', trendData.reduce((sum, day) => sum + day.minutes, 0), 'minutes');
+    // Data validation completed
     
     return {
       isValid: stats.totalSessions >= 0 && stats.totalStudyTime >= 0,

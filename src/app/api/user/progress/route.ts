@@ -47,9 +47,6 @@ export async function PUT(request: NextRequest) {
 
     const progressUpdate = await request.json();
 
-    console.log('🔄 Updating progress for user:', user.userId);
-    console.log('📊 Progress data received:', JSON.stringify(progressUpdate, null, 2));
-
     await AtlasUserService.updateUserProgress(user.userId, progressUpdate);
 
     return NextResponse.json({

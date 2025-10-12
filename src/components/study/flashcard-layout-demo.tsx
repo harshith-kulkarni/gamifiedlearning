@@ -1,12 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { FlashcardViewer } from './flashcard-viewer';
 import { Flashcard } from '@/lib/models/flashcard';
-import { Settings, Maximize2, Minimize2, RotateCw, Info } from 'lucide-react';
+import { Settings, Maximize2, RotateCw, Info } from 'lucide-react';
 
 interface FlashcardLayoutDemoProps {
   onClose: () => void;
@@ -70,7 +70,7 @@ export function FlashcardLayoutDemo({ onClose }: FlashcardLayoutDemoProps) {
                   Adjustable Layout Controls
                 </Badge>
                 <p className="text-xs text-muted-foreground pl-2">
-                  Click "Layout" button to access size controls
+                  Click &quot;Layout&quot; button to access size controls
                 </p>
               </div>
 
@@ -173,7 +173,6 @@ export function FlashcardLayoutDemo({ onClose }: FlashcardLayoutDemoProps) {
             pdfTitle="Layout Controls Demo"
             onBackToPdf={() => {
               // Demo completed
-              console.log('Layout demo completed');
             }}
           />
         </div>

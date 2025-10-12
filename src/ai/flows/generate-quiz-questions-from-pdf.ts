@@ -8,7 +8,7 @@
  */
 
 import {ai} from '@/ai/genkit';
-import {z} from 'genkit';
+import {z} from 'zod';
 
 const GenerateQuizQuestionsInputSchema = z.object({
   pdfDataUri: z
@@ -42,7 +42,6 @@ export async function generateQuizQuestions(input: GenerateQuizQuestionsInput): 
   if (quizCache.has(input.pdfDataUri)) {
     const cached = quizCache.get(input.pdfDataUri);
     if (cached && Date.now() - cached.timestamp < 5 * 60 * 1000) { // 5 minutes TTL
-      console.log('Returning cached quiz questions');
       return cached.data;
     } else {
       // Expired, remove from cache
@@ -51,7 +50,6 @@ export async function generateQuizQuestions(input: GenerateQuizQuestionsInput): 
   }
 
   // Generate new questions
-  console.log('Generating new quiz questions');
   const result = await generateQuizQuestionsFlow(input);
   
   // Cache the result
@@ -86,7 +84,7 @@ const generateQuizQuestionsFlow = ai.defineFlow(
     inputSchema: GenerateQuizQuestionsInputSchema,
     outputSchema: GenerateQuizQuestionsOutputSchema,
   },
-  async input => {
+  async (input: GenerateQuizQuestionsInput) => {
     const {output} = await prompt(input);
     return output!;
   }

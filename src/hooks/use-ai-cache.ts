@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useRef } from 'react';
+import { useCallback, useRef } from 'react';
 
 // Simple in-memory cache for AI responses
 const aiCache = new Map<string, any>();

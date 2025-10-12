@@ -8,7 +8,7 @@
 import { getDatabase } from '@/lib/mongodb';
 import { User as LegacyUser, UserProgress, StudySession, defaultUserProgress } from '@/lib/models/user';
 import bcrypt from 'bcryptjs';
-import { MongoClient, ServerApiVersion, ObjectId, Int32 } from 'mongodb';
+import { ObjectId, Int32 } from 'mongodb';
 
 // Atlas User interface (matches our new schema)
 interface AtlasUser {
@@ -29,7 +29,6 @@ export class AtlasUserService {
 
   static async createUser(username: string, email: string, password: string): Promise<LegacyUser> {
     const users = await this.getUsersCollection();
-    const db = await getDatabase();
     
     // Check if user already exists
     const existingUser = await users.findOne({ 
@@ -254,10 +253,8 @@ export class AtlasUserService {
         { upsert: true }
       );
 
-      console.log(`✅ Updated user progress for ${userId}:`, statsUpdates);
+
     } catch (error) {
-      console.error(`❌ Failed to update user progress for ${userId}:`, error);
-      console.error('Data being updated:', JSON.stringify(statsUpdates, null, 2));
       throw new Error(`Database validation failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
@@ -291,7 +288,7 @@ export class AtlasUserService {
     // Get current user stats
     const stats = await userStats.findOne({ userId: new ObjectId(userId) });
     const currentPoints = stats?.points || 0;
-    const currentLevel = stats?.level || 1;
+    // const currentLevel = stats?.level || 1; // Unused for now
     const currentStudyTime = stats?.totalStudyTime || 0;
     const currentStreak = stats?.streak || 0;
     
@@ -379,18 +376,18 @@ export class AtlasUserService {
 
   // Placeholder methods for badge/quest/achievement management
   // These would integrate with the separate collections in a full implementation
-  static async updateBadge(userId: string, badgeId: string, earned: boolean): Promise<void> {
+  static async updateBadge(_userId: string, _badgeId: string, _earned: boolean): Promise<void> {
     // TODO: Implement with userBadges collection
-    console.log(`Badge update: ${badgeId} for user ${userId} - ${earned}`);
+    // Placeholder implementation
   }
 
-  static async updateQuest(userId: string, questId: string, progress: number): Promise<void> {
+  static async updateQuest(_userId: string, _questId: string, _progress: number): Promise<void> {
     // TODO: Implement with quests collection
-    console.log(`Quest update: ${questId} for user ${userId} - progress: ${progress}`);
+    // Placeholder implementation
   }
 
-  static async updateAchievement(userId: string, achievementId: string, earned: boolean): Promise<void> {
+  static async updateAchievement(_userId: string, _achievementId: string, _earned: boolean): Promise<void> {
     // TODO: Implement with achievements collection
-    console.log(`Achievement update: ${achievementId} for user ${userId} - ${earned}`);
+    // Placeholder implementation
   }
 }

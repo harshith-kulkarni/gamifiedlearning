@@ -22,7 +22,7 @@ export function SyncStatus() {
       } else {
         setSyncStatus('error');
       }
-    } catch (error) {
+    } catch {
       setSyncStatus('error');
     }
   };
@@ -38,7 +38,7 @@ export function SyncStatus() {
       } else {
         setSyncStatus('error');
       }
-    } catch (error) {
+    } catch {
       setSyncStatus('error');
     }
   };

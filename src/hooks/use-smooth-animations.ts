@@ -192,7 +192,7 @@ export function useSmoothAnimations(options: UseSmoothAnimationsOptions = {}) {
 // Hook for managing card transitions
 export function useCardTransitions() {
   const [isTransitioning, setIsTransitioning] = useState(false);
-  const transitionRef = useRef<HTMLElement | null>(null);
+
 
   const transitionToCard = useCallback(async (
     fromElement: HTMLElement,

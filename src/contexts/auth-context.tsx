@@ -73,7 +73,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setError(data.error || 'Login failed');
         return false;
       }
-    } catch (error) {
+    } catch {
       setError('Network error occurred');
       return false;
     } finally {
@@ -104,7 +104,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setError(data.error || 'Signup failed');
         return false;
       }
-    } catch (error) {
+    } catch {
       setError('Network error occurred');
       return false;
     } finally {

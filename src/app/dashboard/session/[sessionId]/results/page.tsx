@@ -150,7 +150,7 @@ export default function SessionResultsPage() {
             <Card className="shadow-lg gamify-card">
                 <CardHeader className="text-center">
                     <CardTitle className="text-3xl font-headline">Excellent Work!</CardTitle>
-                    <CardDescription>Here's a summary of your study session for '{taskInfo?.name || 'your document'}'</CardDescription>
+                    <CardDescription>Here&apos;s a summary of your study session for &apos;{taskInfo?.name || 'your document'}&apos;</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-8">
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-center">

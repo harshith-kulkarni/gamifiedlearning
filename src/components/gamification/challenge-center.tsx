@@ -10,8 +10,6 @@ import {
   Target, 
   Star,
   CheckCircle,
-  Circle,
-  Lock,
   Flame,
   Crown,
   Medal
@@ -19,7 +17,7 @@ import {
 import { useState } from 'react';
 
 export function ChallengeCenter() {
-  const { challenges, completeChallenge, points } = useGamification();
+  const { challenges, completeChallenge } = useGamification();
   const [startedChallenges, setStartedChallenges] = useState<Record<string, boolean>>({});
 
   // Get challenge difficulty color

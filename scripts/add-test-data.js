@@ -18,7 +18,7 @@ async function addTestData() {
     const db = client.db();
     
     // Find any existing user to use for testing
-    let testUser = await db.collection('users').findOne({});
+    const testUser = await db.collection('users').findOne({});
     
     if (!testUser) {
       console.log('No users found. Please create a user first by signing up in the app.');

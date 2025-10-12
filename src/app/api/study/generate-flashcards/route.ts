@@ -2,9 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import jwt from 'jsonwebtoken';
 import { generateFlashcards } from '@/ai/flows/generate-flashcards-from-pdf';
 import { 
-  FlashcardGenerationRequestSchema,
-  sanitizeFlashcardGenerationRequest,
-  type FlashcardGenerationRequest
+  sanitizeFlashcardGenerationRequest
 } from '@/lib/models/flashcard';
 
 async function getUserFromToken(request: NextRequest) {
@@ -25,30 +23,21 @@ async function getUserFromToken(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    console.log('🔄 Starting flashcard generation request...');
-    
     // Authenticate user
     const userId = await getUserFromToken(request);
-    console.log('✅ User authenticated:', userId);
     
     // Parse and validate request body
     const body = await request.json();
-    console.log('📄 Request body received, validating...');
-    
     const validatedData = sanitizeFlashcardGenerationRequest(body);
-    console.log('✅ Request validated, maxCards:', validatedData.maxCards);
 
     // Generate flashcards using the AI flow
-    console.log('🤖 Calling AI generation flow...');
     const result = await generateFlashcards({
       pdfDataUri: validatedData.pdfDataUri,
       maxCards: validatedData.maxCards || 10,
     });
-    
-    console.log('✅ AI generation completed, flashcards count:', result.flashcards.length);
 
     // Convert createdAt strings back to Date objects for the API response
-    const flashcardsWithDates = result.flashcards.map(card => ({
+    const flashcardsWithDates = result.flashcards.map((card: { createdAt: string; [key: string]: unknown }) => ({
       ...card,
       createdAt: new Date(card.createdAt)
     }));

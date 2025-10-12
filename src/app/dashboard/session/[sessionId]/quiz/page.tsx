@@ -9,9 +9,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
-import { Loader2, ArrowLeft, ArrowRight, Lightbulb, Coins, Trophy, Star, Zap } from 'lucide-react';
+import { Loader2, ArrowLeft, ArrowRight, Lightbulb, Coins, Trophy, Star } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { generateQuizQuestions, type GenerateQuizQuestionsOutput } from '@/ai/flows/generate-quiz-questions-from-pdf';
+import { generateQuizQuestions } from '@/ai/flows/generate-quiz-questions-from-pdf';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { cn } from '@/lib/utils';
 
@@ -20,7 +20,7 @@ export default function QuizSessionPage() {
     const params = useParams();
     const { toast } = useToast();
     const { taskInfo, setQuizQuestions: setContextQuizQuestions, quizQuestions, addQuizAnswer, getAnswerForQuestion, useCoin, coinsUsed } = useStudySession();
-    const { points, addPoints, completeChallenge, checkQuestProgress } = useGamification();
+    const { points } = useGamification();
 
     const [isLoading, setIsLoading] = useState(true);
     const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
@@ -99,15 +99,12 @@ export default function QuizSessionPage() {
             return;
         }
         
-        const success = useCoin();
-        if (success) {
-            setRevealedAnswers(prev => [...prev, currentQuestionIndex]);
-            
-            toast({
-                title: "Answer Revealed! 💡",
-                description: "The correct answer is now highlighted. (-10 points)",
-            });
-        }
+        setRevealedAnswers(prev => [...prev, currentQuestionIndex]);
+        
+        toast({
+            title: "Answer Revealed! 💡",
+            description: "The correct answer is now highlighted. (-10 points)",
+        });
     }, [useCoin, coinsUsed, currentQuestionIndex, toast]);
 
     const isAnswerRevealed = useMemo(() => revealedAnswers.includes(currentQuestionIndex), [revealedAnswers, currentQuestionIndex]);
@@ -169,7 +166,7 @@ export default function QuizSessionPage() {
                         className="space-y-2"
                         disabled={isAnswerRevealed}
                     >
-                        {currentQuestion?.options.map((option, i) => {
+                        {currentQuestion?.options.map((option: string, i: number) => {
                              const isCorrect = option === currentQuestion.answer;
                              const isSelected = selectedAnswer === option;
                             return (
@@ -199,7 +196,7 @@ export default function QuizSessionPage() {
                             <AlertDialogHeader>
                                 <AlertDialogTitle>Reveal Answer?</AlertDialogTitle>
                                 <AlertDialogDescription>
-                                    This will cost 10 points and reveal the correct answer for this question. You won't be able to change your answer afterwards. You have {3 - coinsUsed} hints remaining. Are you sure?
+                                    This will cost 10 points and reveal the correct answer for this question. You won&apos;t be able to change your answer afterwards. You have {3 - coinsUsed} hints remaining. Are you sure?
                                 </AlertDialogDescription>
                             </AlertDialogHeader>
                             <AlertDialogFooter>

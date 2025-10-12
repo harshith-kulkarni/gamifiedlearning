@@ -27,7 +27,6 @@ import { ErrorBoundary } from "@/components/error-boundary";
 import { SyncStatus } from "@/components/dashboard/sync-status";
 import { FlashcardDashboardWidgets } from "@/components/dashboard/flashcard-dashboard-widgets";
 
-
 // Task interface matching the data structure
 interface Task {
   id: string;
@@ -45,11 +44,10 @@ const generateUniqueId = (prefix: string, index: number) => {
 export default function DashboardPage() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [lastRefresh, setLastRefresh] = useState(Date.now());
   const { completedSessions } = useStudySession();
-  const { points, level, streak, badges, quests, challenges, fetchLatestProgress } = useGamification();
+  const { points, level, streak } = useGamification();
 
-  // Real-time fetch tasks from database with auto-refresh
+  // Fetch tasks from database with auto-refresh
   const fetchTasks = useCallback(async () => {
     try {
       setIsLoading(true);
@@ -59,8 +57,7 @@ export default function DashboardPage() {
         return;
       }
 
-      // Fetch latest progress first
-      await fetchLatestProgress();
+      // Progress is automatically fetched by gamification context
 
       const response = await fetch('/api/user/study-session', {
         headers: {
@@ -78,7 +75,6 @@ export default function DashboardPage() {
           points: session.points,
         }));
         setTasks(formattedTasks);
-        // Dashboard data refreshed from database
       } else {
         // Fallback to local sessions if API fails
         const formattedTasks = completedSessions.map((session, index) => ({
@@ -103,9 +99,8 @@ export default function DashboardPage() {
       setTasks(formattedTasks);
     } finally {
       setIsLoading(false);
-      setLastRefresh(Date.now());
     }
-  }, [completedSessions, fetchLatestProgress]);
+  }, [completedSessions]); // Removed fetchLatestProgress to prevent cascade
 
   // Initial fetch and auto-refresh
   useEffect(() => {
@@ -117,55 +112,45 @@ export default function DashboardPage() {
     fetchTasks();
   }, [completedSessions.length, fetchTasks]);
 
-  // Periodic refresh every 5 minutes for updates (reduced from 30 seconds)
+  // Periodic refresh every 5 minutes
   useEffect(() => {
     const interval = setInterval(() => {
       fetchTasks();
-    }, 300000); // 5 minutes instead of 30 seconds
+    }, 300000); // 5 minutes
 
     return () => clearInterval(interval);
   }, [fetchTasks]);
   
-  // Memoize calculations
-  const totalPoints = useMemo(() => tasks.reduce((acc, task) => acc + task.points, 0), [tasks]);
-  const completedCount = useMemo(() => tasks.filter(t => t.status === 'Completed').length, [tasks]);
-  const pendingCount = useMemo(() => tasks.filter(t => t.status !== 'Completed').length, [tasks]);
+  // Memoized calculations
   const sortedTasks = useMemo(() => tasks.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()), [tasks]);
-
-  // Get earned badges count
-  const earnedBadgesCount = useMemo(() => badges.filter(b => b.earned).length, [badges]);
-  
-  // Get active quests count
-  const activeQuestsCount = useMemo(() => quests.filter(q => !q.completed).length, [quests]);
-  
-  // Get completed challenges count
-  const completedChallengesCount = useMemo(() => challenges.filter(c => c.completed).length, [challenges]);
 
   return (
     <div className="grid auto-rows-max items-start gap-4 md:gap-8 lg:col-span-2">
+      {/* Welcome Section */}
       <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-2 xl:grid-cols-4">
         <Card className="sm:col-span-2 gamify-card">
           <CardHeader className="pb-3">
             <CardTitle className="font-headline">Your Study Dashboard</CardTitle>
             <CardDescription className="max-w-lg text-balance leading-relaxed">
-              Welcome back! Here's an overview of your progress. Ready to start a new session?
+              Welcome back! Here&apos;s an overview of your progress. Ready to start a new session?
             </CardDescription>
           </CardHeader>
           <CardContent>
             <Link href="/dashboard/create-task">
-                <Button className="gamify-button bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90">
-                    <PlusCircle className="mr-2 h-4 w-4" />
-                    New Study Session
-                </Button>
+              <Button className="gamify-button bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90">
+                <PlusCircle className="mr-2 h-4 w-4" />
+                New Study Session
+              </Button>
             </Link>
           </CardContent>
         </Card>
+        
         <Card className="gamify-card">
           <CardHeader className="pb-2">
             <CardDescription>Level</CardDescription>
             <CardTitle className="text-4xl flex items-center gap-2">
-                <Trophy className="h-8 w-8 text-yellow-500 fill-yellow-500" />
-                {level}
+              <Trophy className="h-8 w-8 text-yellow-500 fill-yellow-500" />
+              {level}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -174,12 +159,13 @@ export default function DashboardPage() {
             </div>
           </CardContent>
         </Card>
+        
         <Card className="gamify-card">
           <CardHeader className="pb-2">
             <CardDescription>Streak</CardDescription>
             <CardTitle className="text-4xl flex items-center gap-2">
-                <Flame className="h-8 w-8 text-red-500" />
-                {streak}
+              <Flame className="h-8 w-8 text-red-500" />
+              {streak}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -188,23 +174,19 @@ export default function DashboardPage() {
             </div>
           </CardContent>
         </Card>
-
       </div>
 
-      {/* Flashcard Dashboard Widgets */}
-      <div className="sm:col-span-2 md:col-span-4 lg:col-span-2 xl:col-span-4">
-        <ErrorBoundary>
-          <FlashcardDashboardWidgets />
-        </ErrorBoundary>
-      </div>
-
-
+      {/* Flashcard Widgets */}
+      <ErrorBoundary>
+        <FlashcardDashboardWidgets />
+      </ErrorBoundary>
 
       {/* Gamification Dashboard */}
       <ErrorBoundary>
         <GamificationDashboard />
       </ErrorBoundary>
 
+      {/* Tasks Table */}
       <Card className="gamify-card">
         <CardHeader className="px-7">
           <div className="flex items-center justify-between">
@@ -275,19 +257,25 @@ export default function DashboardPage() {
                         {task.status}
                       </Badge>
                     </TableCell>
-                    <TableCell className="hidden md:table-cell">{new Date(task.date).toLocaleDateString()}</TableCell>
-                    <TableCell className="text-right">{task.points > 0 ? `+${task.points}`: '-'}</TableCell>
+                    <TableCell className="hidden md:table-cell">
+                      {new Date(task.date).toLocaleDateString()}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {task.points > 0 ? `+${task.points}` : '-'}
+                    </TableCell>
                   </TableRow>
                 ))
               ) : (
                 <TableRow>
                   <TableCell colSpan={4} className="h-24 text-center">
                     <div className="flex flex-col items-center gap-2">
-                        <Package className="h-8 w-8 text-muted-foreground" />
-                        <p className="text-muted-foreground">No tasks completed yet.</p>
-                        <Link href="/dashboard/create-task">
-                            <Button variant="secondary" size="sm" className="gamify-button">Start a new session</Button>
-                        </Link>
+                      <Package className="h-8 w-8 text-muted-foreground" />
+                      <p className="text-muted-foreground">No tasks completed yet.</p>
+                      <Link href="/dashboard/create-task">
+                        <Button variant="secondary" size="sm" className="gamify-button">
+                          Start a new session
+                        </Button>
+                      </Link>
                     </div>
                   </TableCell>
                 </TableRow>

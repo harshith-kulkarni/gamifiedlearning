@@ -604,7 +604,7 @@ export class GamificationService {
   private static async checkAndUpdateBadges(stats: UserStats): Promise<Badge[]> {
     const badges = [...stats.badges];
     
-    for (let badge of badges) {
+    for (const badge of badges) {
       if (badge.earned) continue;
 
       let shouldEarn = false;
@@ -639,7 +639,7 @@ export class GamificationService {
   private static async checkAndUpdateAchievements(stats: UserStats): Promise<Achievement[]> {
     const achievements = [...stats.achievements];
     
-    for (let achievement of achievements) {
+    for (const achievement of achievements) {
       if (achievement.earned) continue;
 
       let shouldEarn = false;

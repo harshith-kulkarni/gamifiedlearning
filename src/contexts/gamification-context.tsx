@@ -216,7 +216,7 @@ export function GamificationProvider({ children }: { children: ReactNode }) {
       setQuests(defaultQuests);
       setAchievements(defaultAchievements);
     }
-  }, [user]);
+  }, [user, defaultBadges, defaultQuests, defaultAchievements]);
 
   // Real-time sync progress to database with validation
   const syncToDatabase = useCallback(async () => {
@@ -299,8 +299,19 @@ export function GamificationProvider({ children }: { children: ReactNode }) {
   }, [user, points, level, streak, totalStudyTime, dailyGoal, badges, quests, achievements, getValidToken]);
 
   // Fetch latest progress from database for real-time sync
+  const [lastFetchTime, setLastFetchTime] = useState(0);
+
   const fetchLatestProgress = useCallback(async () => {
     if (!user) return false;
+
+    // Prevent excessive API calls - minimum 5 seconds between fetches
+    const now = Date.now();
+    if (now - lastFetchTime < 5000) {
+      // Skipping fetch - too soon since last call
+      return false;
+    }
+
+    setLastFetchTime(now);
 
     try {
       const token = getValidToken();
@@ -336,36 +347,74 @@ export function GamificationProvider({ children }: { children: ReactNode }) {
       console.error('❌ Error fetching latest progress:', error);
     }
     return false;
-  }, [user, getValidToken]);
+  }, [user, getValidToken, defaultAchievements, defaultBadges, defaultQuests, lastFetchTime]);
 
-  // Debounced auto-sync progress when important data changes
+  // Smart sync strategy - only sync when data actually changes
+  const [lastSyncTime, setLastSyncTime] = useState(0);
+  const [lastSyncedData, setLastSyncedData] = useState<string>('');
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
+
   useEffect(() => {
-    if (user && points >= 0) {
-      const timeoutId = setTimeout(() => {
-        syncToDatabase();
-      }, 2000); // 2 seconds debounce to prevent excessive API calls
+    if (user && points >= 0 && !isInitialLoad) {
+      // Create a hash of current data to detect actual changes
+      const currentData = JSON.stringify({ points, level, streak, totalStudyTime });
 
-      return () => clearTimeout(timeoutId);
+      // Only sync if data actually changed and enough time has passed
+      const now = Date.now();
+      const hasDataChanged = currentData !== lastSyncedData;
+      const enoughTimePassed = now - lastSyncTime > 15000; // 15 seconds minimum
+
+      if (hasDataChanged && enoughTimePassed) {
+        const timeoutId = setTimeout(() => {
+          syncToDatabase().then(() => {
+            setLastSyncTime(Date.now());
+            setLastSyncedData(currentData);
+          });
+        }, 2000); // 2 second debounce
+
+        return () => clearTimeout(timeoutId);
+      }
     }
-  }, [user, points, level, streak, totalStudyTime, badges, quests, achievements, syncToDatabase]);
+  }, [user, points, level, streak, totalStudyTime, syncToDatabase, lastSyncTime, lastSyncedData, isInitialLoad]);
 
-  // Periodic sync to ensure consistency (reduced frequency)
+  // Mark initial load as complete after first render
+  useEffect(() => {
+    if (isInitialLoad && user) {
+      const timer = setTimeout(() => {
+        setIsInitialLoad(false);
+      }, 3000); // Wait 3 seconds before enabling auto-sync
+
+      return () => clearTimeout(timer);
+    }
+  }, [isInitialLoad, user]);
+
+  // Single useEffect for both initial fetch and periodic sync
   useEffect(() => {
     if (!user) return;
 
+    // Initial fetch - only once per user session
+    let hasInitialFetch = false;
+
+    const performInitialFetch = async () => {
+      if (!hasInitialFetch && user.progress) {
+        hasInitialFetch = true;
+        await fetchLatestProgress();
+      }
+    };
+
+    // Perform initial fetch immediately
+    performInitialFetch();
+
+    // Set up periodic sync (every 10 minutes)
     const interval = setInterval(() => {
       fetchLatestProgress();
-    }, 300000); // Fetch latest every 5 minutes instead of 30 seconds
+    }, 600000); // 10 minutes
 
-    return () => clearInterval(interval);
-  }, [user, fetchLatestProgress]);
-
-  // Initial fetch on user change
-  useEffect(() => {
-    if (user && user.progress) {
-      fetchLatestProgress();
-    }
-  }, [user, fetchLatestProgress]);
+    return () => {
+      clearInterval(interval);
+      hasInitialFetch = false;
+    };
+  }, [user?._id]); // Only depend on user ID, not the entire user object or fetchLatestProgress
 
   // Level calculation based on points - CORRECTED SYSTEM
   // Level 1: 100 points, Level 2: 150 points, Level 3: 200 points (+50 for each level)

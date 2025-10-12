@@ -7,7 +7,6 @@ import {
   PlusCircle,
   BarChart2,
   Settings,
-  BookOpen,
   Library,
 } from 'lucide-react';
 

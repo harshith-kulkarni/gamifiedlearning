@@ -242,7 +242,7 @@ export function ProgressVisualization() {
           <div className="space-y-4">
             <div>
               <div className="flex justify-between text-sm mb-1">
-                <span>Today's Progress</span>
+                <span>Today&apos;s Progress</span>
                 <span>{dailyProgress}/{dailyGoal} minutes</span>
               </div>
               <Progress value={(dailyProgress / dailyGoal) * 100} className="h-3" />

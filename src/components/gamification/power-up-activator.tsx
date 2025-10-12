@@ -3,12 +3,11 @@
 import { useGamification } from '@/contexts/gamification-context';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Badge } from '@/components/ui/badge';
-import { Zap, Clock, Lightbulb, Target, Coins } from 'lucide-react';
+import { Zap, Coins } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 export function PowerUpActivator() {
-  const { powerUps, activatePowerUp, buyPowerUp, points } = useGamification();
+  const { powerUps, buyPowerUp, points } = useGamification();
   const { toast } = useToast();
 
   const handleBuyPowerUp = (powerUpId: string, powerUpName: string) => {

@@ -53,6 +53,7 @@ export class FlashcardService {
         });
         
         // Remove _id for insertion
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const { _id, ...cardWithoutId } = sanitizedCard;
         return cardWithoutId as Omit<SavedFlashcard, '_id'>;
       });

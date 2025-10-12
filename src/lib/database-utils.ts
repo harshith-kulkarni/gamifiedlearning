@@ -5,7 +5,7 @@
  * data validation, and auto-increment functionality.
  */
 
-import { MongoClient, Db, Collection, ObjectId, Document } from 'mongodb';
+import { Db, Collection, ObjectId, Document } from 'mongodb';
 import clientPromise from './mongodb';
 
 export interface User {
@@ -147,7 +147,7 @@ export async function updateUserProgress(
   }
 
   const currentPoints = user.progress?.points || 0;
-  const currentLevel = user.progress?.level || 1;
+
   const currentStudyTime = user.progress?.totalStudyTime || 0;
   const currentStreak = user.progress?.streak || 0;
   
@@ -360,7 +360,7 @@ export async function checkAndAwardBadges(
         );
       }
 
-      console.log(`🏅 Badge awarded: ${badge.name} to user ${userId}`);
+      // Badge awarded successfully
     }
   }
 }

@@ -242,14 +242,14 @@ export function StudySessionProvider({ children }: { children: ReactNode }) {
                     try {
                         const errorObj = JSON.parse(errorData);
                         errorMessage = errorObj.error || errorMessage;
-                    } catch (parseError) {
+                    } catch {
                         // If parsing fails, use the raw error data
                         errorMessage = errorData || errorMessage;
                     }
                     
                     console.error('Failed to save study session:', response.status, errorMessage);
                 } else {
-                    const result = await response.json();
+                    await response.json();
                     // Study session saved successfully - no need to log in production
                 }
             } catch (error) {
@@ -264,7 +264,7 @@ export function StudySessionProvider({ children }: { children: ReactNode }) {
         
         // Gamification: Add points for completing session using new system
         const has2xPowerUp = powerUps.some(p => p.id === 'double-points' && p.active);
-        const pointsEarned = addStudySessionPoints(studyTimeInMinutes, true, has2xPowerUp);
+        addStudySessionPoints(studyTimeInMinutes, true, has2xPowerUp);
         
         // Update quest progress
         checkQuestProgress('quiz-5', 1);
@@ -275,7 +275,7 @@ export function StudySessionProvider({ children }: { children: ReactNode }) {
         
         // Add study time to total
         addStudyTime(studyTimeInMinutes);
-    }, [user, studyDuration, quizAnswers, addStudySessionPoints, checkQuestProgress, incrementStreak, addStudyTime, powerUps]);
+    }, [user, studyDuration, quizAnswers, addStudySessionPoints, checkQuestProgress, incrementStreak, addStudyTime, powerUps, getValidToken, quizQuestions]);
 
     // Sync timer duration with study duration
     useEffect(() => {
@@ -312,7 +312,7 @@ export function StudySessionProvider({ children }: { children: ReactNode }) {
         resetTimer();
         setPenaltyPoints(0);
         setPrefetchedQuizQuestions(null);
-    }, [])
+    }, [resetTimer])
 
     // Memoize the context value to prevent unnecessary re-renders
     const value = useMemo(() => ({

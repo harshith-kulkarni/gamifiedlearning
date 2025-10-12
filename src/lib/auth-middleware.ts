@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-// @ts-ignore
-import jwt from 'jsonwebtoken';
+
 import { AuthService } from '@/lib/services/auth-service';
 
 export async function authenticateRequest(request: NextRequest) {
