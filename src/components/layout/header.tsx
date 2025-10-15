@@ -28,11 +28,23 @@ import { useAuth } from '@/contexts/auth-context';
 export function Header() {
   const router = useRouter();
   const { user, logout } = useAuth();
-  const userAvatar = PlaceHolderImages.find(img => img.id === 'user-avatar');
+  const userAvatar = PlaceHolderImages.find(img => img.id === 'user-avatar') || {
+    id: 'fallback',
+    imageUrl: 'https://picsum.photos/seed/fallback/32/32',
+    imageHint: 'person',
+    description: 'Fallback avatar'
+  };
 
-  const handleLogout = () => {
-    logout();
-    router.push('/');
+  const handleLogout = async () => {
+    try {
+      logout();
+      // Force a hard redirect to prevent white page
+      window.location.href = '/';
+    } catch (error) {
+      console.error('Logout error:', error);
+      // Fallback: force redirect anyway
+      window.location.href = '/';
+    }
   };
 
   return (

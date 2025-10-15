@@ -97,6 +97,48 @@ interface GamificationContextType {
   fetchLatestProgress: () => Promise<boolean>; // Fetch latest from database
 }
 
+// Default data arrays (moved outside component to prevent recreation)
+const DEFAULT_BADGES: Badge[] = [
+  { id: 'first-quiz', name: 'First Quiz', description: 'Complete your first quiz', icon: '🎓', earned: false, rarity: 'common' },
+  { id: 'streak-7', name: 'Week Streak', description: 'Study for 7 days in a row', icon: '🔥', earned: false, rarity: 'rare' },
+  { id: 'points-100', name: 'Centurion', description: 'Earn 100 points', icon: '💯', earned: false, rarity: 'common' },
+  { id: 'perfect-score', name: 'Perfect Score', description: 'Get 100% on a quiz', icon: '🏆', earned: false, rarity: 'rare' },
+  { id: 'early-bird', name: 'Early Bird', description: 'Study before 8 AM', icon: '🐦', earned: false, rarity: 'common' },
+  { id: 'night-owl', name: 'Night Owl', description: 'Study after 10 PM', icon: '🦉', earned: false, rarity: 'common' },
+  { id: 'speed-demon', name: 'Speed Demon', description: 'Finish a quiz in under 5 minutes', icon: '⚡', earned: false, rarity: 'epic' },
+  { id: 'scholar', name: 'Scholar', description: 'Complete 10 quizzes', icon: '📚', earned: false, rarity: 'epic' },
+  { id: 'first-flashcard', name: 'First Flashcard', description: 'Create your first flashcard', icon: '📇', earned: false, rarity: 'common' },
+  { id: 'flashcard-collector', name: 'Card Collector', description: 'Create 10 flashcards', icon: '🗂️', earned: false, rarity: 'common' },
+  { id: 'flashcard-hoarder', name: 'Card Hoarder', description: 'Create 50 flashcards', icon: '📚', earned: false, rarity: 'rare' },
+  { id: 'flashcard-library', name: 'Living Library', description: 'Create 100 flashcards', icon: '🏛️', earned: false, rarity: 'epic' },
+  { id: 'knowledge-seeker', name: 'Knowledge Seeker', description: 'Master 25 flashcards', icon: '🔍', earned: false, rarity: 'rare' },
+  { id: 'knowledge-master', name: 'Knowledge Master', description: 'Master 100 flashcards', icon: '🧠', earned: false, rarity: 'epic' },
+  { id: 'flashcard-streak-7', name: 'Card Streak', description: 'Review flashcards for 7 days straight', icon: '🔥', earned: false, rarity: 'rare' },
+  { id: 'flashcard-streak-30', name: 'Card Marathon', description: 'Review flashcards for 30 days straight', icon: '🏃', earned: false, rarity: 'legendary' },
+  { id: 'active-reviewer', name: 'Active Reviewer', description: 'Review 20+ cards in a week', icon: '⚡', earned: false, rarity: 'rare' },
+];
+
+const DEFAULT_QUESTS: Quest[] = [
+  { id: 'study-60', name: 'Hour Master', description: 'Study for 60 minutes', icon: '⏰', progress: 0, target: 60, completed: false, reward: 50 },
+  { id: 'quiz-5', name: 'Quiz Master', description: 'Complete 5 quizzes', icon: '📝', progress: 0, target: 5, completed: false, reward: 75 },
+  { id: 'chat-10', name: 'Chat Champion', description: 'Ask 10 questions to AI', icon: '💬', progress: 0, target: 10, completed: false, reward: 30 },
+  { id: 'streak-30', name: 'Monthly Streak', description: 'Study for 30 days in a row', icon: '🗓️', progress: 0, target: 30, completed: false, reward: 200 },
+  { id: 'create-flashcards-10', name: 'Card Creator', description: 'Create 10 flashcards', icon: '📇', progress: 0, target: 10, completed: false, reward: 25 },
+  { id: 'master-flashcards-20', name: 'Card Master', description: 'Master 20 flashcards', icon: '🎯', progress: 0, target: 20, completed: false, reward: 40 },
+  { id: 'review-streak-7', name: 'Review Streak', description: 'Review flashcards for 7 days', icon: '🔄', progress: 0, target: 7, completed: false, reward: 35 },
+];
+
+const DEFAULT_ACHIEVEMENTS: Achievement[] = [
+  { id: 'first-session', name: 'First Session', description: 'Complete your first study session', icon: '🎯', earned: false, points: 25 },
+  { id: 'marathon-study', name: 'Marathon Study', description: 'Study for 2 hours in one session', icon: '🏃', earned: false, points: 50 },
+  { id: 'consistent-week', name: 'Consistent Week', description: 'Study every day for a week', icon: '📅', earned: false, points: 75 },
+  { id: 'quiz-expert', name: 'Quiz Expert', description: 'Score 90% or higher on 5 quizzes', icon: '📝', earned: false, points: 100 },
+  { id: 'flashcard-apprentice', name: 'Flashcard Apprentice', description: 'Master 50% of your flashcards', icon: '🎓', earned: false, points: 50 },
+  { id: 'flashcard-expert', name: 'Flashcard Expert', description: 'Master 80% of your flashcards', icon: '🏆', earned: false, points: 100 },
+  { id: 'flashcard-master', name: 'Flashcard Master', description: 'Master 95% of your flashcards', icon: '👑', earned: false, points: 200 },
+  { id: 'ai-learning-pioneer', name: 'AI Learning Pioneer', description: 'Generate 100 AI-powered flashcards', icon: '🚀', earned: false, points: 150 },
+];
+
 const GamificationContext = createContext<GamificationContextType | undefined>(undefined);
 
 export function GamificationProvider({ children }: { children: ReactNode }) {
@@ -109,29 +151,7 @@ export function GamificationProvider({ children }: { children: ReactNode }) {
   const [dailyProgress, setDailyProgress] = useState(0);
   const [totalStudyTime, setTotalStudyTime] = useState(0);
 
-  // Initialize badges with default values
-  const defaultBadges: Badge[] = [
-    { id: 'first-quiz', name: 'First Quiz', description: 'Complete your first quiz', icon: '🎓', earned: false, rarity: 'common' },
-    { id: 'streak-7', name: 'Week Streak', description: 'Study for 7 days in a row', icon: '🔥', earned: false, rarity: 'rare' },
-    { id: 'points-100', name: 'Centurion', description: 'Earn 100 points', icon: '💯', earned: false, rarity: 'common' },
-    { id: 'perfect-score', name: 'Perfect Score', description: 'Get 100% on a quiz', icon: '🏆', earned: false, rarity: 'rare' },
-    { id: 'early-bird', name: 'Early Bird', description: 'Study before 8 AM', icon: '🐦', earned: false, rarity: 'common' },
-    { id: 'night-owl', name: 'Night Owl', description: 'Study after 10 PM', icon: '🦉', earned: false, rarity: 'common' },
-    { id: 'speed-demon', name: 'Speed Demon', description: 'Finish a quiz in under 5 minutes', icon: '⚡', earned: false, rarity: 'epic' },
-    { id: 'scholar', name: 'Scholar', description: 'Complete 10 quizzes', icon: '📚', earned: false, rarity: 'epic' },
-    // Flashcard badges
-    { id: 'first-flashcard', name: 'First Flashcard', description: 'Create your first flashcard', icon: '📇', earned: false, rarity: 'common' },
-    { id: 'flashcard-collector', name: 'Card Collector', description: 'Create 10 flashcards', icon: '🗂️', earned: false, rarity: 'common' },
-    { id: 'flashcard-hoarder', name: 'Card Hoarder', description: 'Create 50 flashcards', icon: '📚', earned: false, rarity: 'rare' },
-    { id: 'flashcard-library', name: 'Living Library', description: 'Create 100 flashcards', icon: '🏛️', earned: false, rarity: 'epic' },
-    { id: 'knowledge-seeker', name: 'Knowledge Seeker', description: 'Master 25 flashcards', icon: '🔍', earned: false, rarity: 'rare' },
-    { id: 'knowledge-master', name: 'Knowledge Master', description: 'Master 100 flashcards', icon: '🧠', earned: false, rarity: 'epic' },
-    { id: 'flashcard-streak-7', name: 'Card Streak', description: 'Review flashcards for 7 days straight', icon: '🔥', earned: false, rarity: 'rare' },
-    { id: 'flashcard-streak-30', name: 'Card Marathon', description: 'Review flashcards for 30 days straight', icon: '🏃', earned: false, rarity: 'legendary' },
-    { id: 'active-reviewer', name: 'Active Reviewer', description: 'Review 20+ cards in a week', icon: '⚡', earned: false, rarity: 'rare' },
-  ];
-
-  const [badges, setBadges] = useState<Badge[]>(defaultBadges);
+  const [badges, setBadges] = useState<Badge[]>(DEFAULT_BADGES);
 
   // Initialize power-ups
   const [powerUps, setPowerUps] = useState<PowerUp[]>([
@@ -141,20 +161,7 @@ export function GamificationProvider({ children }: { children: ReactNode }) {
     { id: 'focus-mode', name: 'Focus Mode', description: 'Eliminate distractions for 1 hour', icon: '🎯', active: false, duration: 3600 },
   ]);
 
-  // Initialize quests with default values
-  const defaultQuests: Quest[] = [
-    { id: 'study-60', name: 'Hour Master', description: 'Study for 60 minutes total', icon: '⏱️', progress: 0, target: 60, reward: 50, completed: false, category: 'study' },
-    { id: 'quiz-5', name: 'Quiz Master', description: 'Complete 5 quizzes', icon: '📝', progress: 0, target: 5, reward: 75, completed: false, category: 'quiz' },
-    { id: 'ai-chat-10', name: 'Chat Champion', description: 'Ask 10 questions to AI tutor', icon: '💬', progress: 0, target: 10, reward: 40, completed: false, category: 'ai' },
-    { id: 'streak-30', name: 'Monthly Streak', description: 'Maintain a 30-day study streak', icon: '📅', progress: 0, target: 30, reward: 150, completed: false, category: 'consistency' },
-    // Flashcard quests
-    { id: 'flashcard-creator', name: 'Card Creator', description: 'Generate 20 flashcards using AI', icon: '🤖', progress: 0, target: 20, reward: 60, completed: false, category: 'flashcard' },
-    { id: 'flashcard-reviewer', name: 'Dedicated Reviewer', description: 'Review 50 flashcards', icon: '📖', progress: 0, target: 50, reward: 80, completed: false, category: 'flashcard' },
-    { id: 'knowledge-master', name: 'Master of Knowledge', description: 'Mark 30 flashcards as known', icon: '🎓', progress: 0, target: 30, reward: 100, completed: false, category: 'flashcard' },
-    { id: 'ai-powered-learning', name: 'AI-Powered Learning', description: 'Generate flashcards from 10 different PDFs', icon: '🧠', progress: 0, target: 10, reward: 120, completed: false, category: 'flashcard' },
-  ];
-
-  const [quests, setQuests] = useState<Quest[]>(defaultQuests);
+  const [quests, setQuests] = useState<Quest[]>(DEFAULT_QUESTS);
 
   // Initialize challenges
   const [challenges, setChallenges] = useState<Challenge[]>([
@@ -164,20 +171,7 @@ export function GamificationProvider({ children }: { children: ReactNode }) {
     { id: 'early-riser', name: 'Early Riser', description: 'Start studying before 6 AM', icon: '🌅', reward: 25, completed: false, difficulty: 'easy' },
   ]);
 
-  // Initialize achievements with default values
-  const defaultAchievements: Achievement[] = [
-    { id: 'first-session', name: 'First Session', description: 'Complete your first study session', icon: '🎯', earned: false, points: 10 },
-    { id: 'marathon-study', name: 'Marathon Study', description: 'Study for 2 hours in one session', icon: '🏃', earned: false, points: 50 },
-    { id: 'consistent-week', name: 'Consistent Week', description: 'Study every day for a week', icon: '📅', earned: false, points: 75 },
-    { id: 'quiz-expert', name: 'Quiz Expert', description: 'Score 90% or higher on 5 quizzes', icon: '📝', earned: false, points: 100 },
-    // Flashcard achievements
-    { id: 'flashcard-apprentice', name: 'Flashcard Apprentice', description: 'Master 50% of your flashcards', icon: '🎓', earned: false, points: 50 },
-    { id: 'flashcard-expert', name: 'Flashcard Expert', description: 'Master 80% of your flashcards', icon: '🏆', earned: false, points: 100 },
-    { id: 'flashcard-master', name: 'Flashcard Master', description: 'Master 95% of your flashcards', icon: '👑', earned: false, points: 200 },
-    { id: 'ai-learning-pioneer', name: 'AI Learning Pioneer', description: 'Generate 100 AI-powered flashcards', icon: '🚀', earned: false, points: 150 },
-  ];
-
-  const [achievements, setAchievements] = useState<Achievement[]>(defaultAchievements);
+  const [achievements, setAchievements] = useState<Achievement[]>(DEFAULT_ACHIEVEMENTS);
 
   // Sync with database when user changes
   useEffect(() => {
@@ -190,9 +184,9 @@ export function GamificationProvider({ children }: { children: ReactNode }) {
       setCoins(0); // Reset coins for each session
       setTotalStudyTime(progress.totalStudyTime || 0);
       setDailyGoal(progress.dailyGoal || 30);
-      setBadges(progress.badges || defaultBadges);
-      setQuests(progress.quests || defaultQuests);
-      setAchievements(progress.achievements || defaultAchievements);
+      setBadges(progress.badges || DEFAULT_BADGES);
+      setQuests(progress.quests || DEFAULT_QUESTS);
+      setAchievements(progress.achievements || DEFAULT_ACHIEVEMENTS);
 
       // Calculate daily progress (today's study time)
       if (user.progress.studySessions) {
@@ -212,11 +206,11 @@ export function GamificationProvider({ children }: { children: ReactNode }) {
       setTotalStudyTime(0);
       setDailyGoal(30);
       setDailyProgress(0);
-      setBadges(defaultBadges);
-      setQuests(defaultQuests);
-      setAchievements(defaultAchievements);
+      setBadges(DEFAULT_BADGES);
+      setQuests(DEFAULT_QUESTS);
+      setAchievements(DEFAULT_ACHIEVEMENTS);
     }
-  }, [user, defaultBadges, defaultQuests, defaultAchievements]);
+  }, [user]); // Remove array dependencies that change on every render
 
   // Real-time sync progress to database with validation
   const syncToDatabase = useCallback(async () => {
@@ -336,9 +330,9 @@ export function GamificationProvider({ children }: { children: ReactNode }) {
           setStreak(progress.streak || 0);
           setTotalStudyTime(progress.totalStudyTime || 0);
           setDailyGoal(progress.dailyGoal || 30);
-          setBadges(progress.badges || defaultBadges);
-          setQuests(progress.quests || defaultQuests);
-          setAchievements(progress.achievements || defaultAchievements);
+          setBadges(progress.badges || DEFAULT_BADGES);
+          setQuests(progress.quests || DEFAULT_QUESTS);
+          setAchievements(progress.achievements || DEFAULT_ACHIEVEMENTS);
 
           return true;
         }
@@ -347,7 +341,7 @@ export function GamificationProvider({ children }: { children: ReactNode }) {
       console.error('❌ Error fetching latest progress:', error);
     }
     return false;
-  }, [user, getValidToken, defaultAchievements, defaultBadges, defaultQuests, lastFetchTime]);
+  }, [user, getValidToken, lastFetchTime]); // Removed array dependencies
 
   // Smart sync strategy - only sync when data actually changes
   const [lastSyncTime, setLastSyncTime] = useState(0);
@@ -582,7 +576,7 @@ export function GamificationProvider({ children }: { children: ReactNode }) {
   // Streak system - if study session created for sequential days then streak is increased
   const incrementStreak = useCallback(() => {
     const today = new Date().toISOString().split('T')[0];
-    const lastStudyDate = localStorage.getItem('lastStudyDate');
+    const lastStudyDate = typeof window !== 'undefined' ? localStorage.getItem('lastStudyDate') : null;
 
     if (lastStudyDate !== today) {
       // Check if it's consecutive days
@@ -598,7 +592,9 @@ export function GamificationProvider({ children }: { children: ReactNode }) {
         setStreak(1);
       }
 
-      localStorage.setItem('lastStudyDate', today);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('lastStudyDate', today);
+      }
     }
     // If already studied today, don't change streak
   }, []);

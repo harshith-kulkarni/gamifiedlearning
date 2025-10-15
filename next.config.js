@@ -36,10 +36,15 @@ const nextConfig = {
   },
   // Enable compression
   compress: true,
+  
+  // Configure for large file uploads (50MB) - moved to API route level
+  
   // Experimental features for better builds
   experimental: {
     // Optimize package imports
-    optimizePackageImports: ['recharts', 'lucide-react'],
+    optimizePackageImports: ['lucide-react'],
+    // Enable large page data for big uploads
+    largePageDataBytes: 128 * 1024, // 128KB
   },
   // Enable webpack optimizations
   webpack: (config, { isServer }) => {

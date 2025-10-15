@@ -3,7 +3,8 @@ import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
 import { AuthProvider } from '@/contexts/auth-context';
 import { GamificationProvider } from '@/contexts/gamification-context';
-
+import { Analytics } from "@vercel/analytics/next";
+import { ErrorBoundary } from '@/components/error-boundary';                                                                  
 export const metadata: Metadata = {
   title: 'StudyMaster AI',
   description: 'AI-powered gamified learning platform',
@@ -24,13 +25,16 @@ export default function RootLayout({
           rel="stylesheet"
         />
       </head>
-      <body className="font-body antialiased">
-        <AuthProvider>
-          <GamificationProvider>
-            {children}
-            <Toaster />
-          </GamificationProvider>
-        </AuthProvider>
+      <body className="font-sans antialiased">
+        <ErrorBoundary>
+          <AuthProvider>
+            <GamificationProvider>
+              {children}
+              <Toaster />
+              <Analytics />
+            </GamificationProvider>
+          </AuthProvider>
+        </ErrorBoundary>
       </body>
     </html>
   );

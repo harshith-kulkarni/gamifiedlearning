@@ -92,6 +92,8 @@ export function StudySessionProvider({ children }: { children: ReactNode }) {
 
     // Load completed sessions from localStorage on initial client-side render
     useEffect(() => {
+        if (typeof window === 'undefined') return;
+        
         try {
             const savedSessions = localStorage.getItem('completedSessions');
             if (savedSessions) {
@@ -104,6 +106,8 @@ export function StudySessionProvider({ children }: { children: ReactNode }) {
 
     // Save completed sessions to localStorage whenever they change
     useEffect(() => {
+        if (typeof window === 'undefined') return;
+        
         try {
             localStorage.setItem('completedSessions', JSON.stringify(completedSessions));
         } catch (error) {

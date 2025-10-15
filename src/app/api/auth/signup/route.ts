@@ -40,14 +40,15 @@ export async function POST(request: NextRequest) {
 
     const { user, token } = result;
 
+    // Get complete user data including progress
+    if (!user._id) {
+      throw new Error('User ID not found');
+    }
+
     // Set cookie with token
     const response = NextResponse.json({
       success: true,
-      user: {
-        id: user._id,
-        username: user.username,
-        email: user.email,
-      },
+      user: user, // Return complete user object with progress
       token,
     });
 
@@ -60,10 +61,10 @@ export async function POST(request: NextRequest) {
     });
 
     return response;
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Signup error:', error);
     
-    if (error.message === 'User with this email or username already exists') {
+    if (error instanceof Error && error.message === 'User with this email or username already exists') {
       return NextResponse.json(
         { error: 'User with this email or username already exists' },
         { status: 409 }

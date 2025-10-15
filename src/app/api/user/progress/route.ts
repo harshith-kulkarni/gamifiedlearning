@@ -52,7 +52,7 @@ export async function PUT(request: NextRequest) {
     return NextResponse.json({
       success: true,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('❌ Update progress error:', error);
     
     // Return specific error messages for debugging

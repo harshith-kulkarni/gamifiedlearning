@@ -3,6 +3,7 @@
 import { useEffect, useState, useMemo, useCallback } from "react";
 import Link from "next/link";
 import { PlusCircle, Package, Trophy, Flame, RefreshCw } from "lucide-react";
+import { StudySessionData } from "@/hooks/use-study-data";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -22,6 +23,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { useStudySession } from "@/contexts/study-session-context";
 import { useGamification } from "@/contexts/gamification-context";
+import { useStudyData } from "@/hooks/use-study-data";
 import { GamificationDashboard } from "@/components/gamification/gamification-dashboard";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { SyncStatus } from "@/components/dashboard/sync-status";
@@ -46,6 +48,7 @@ export default function DashboardPage() {
   const [isLoading, setIsLoading] = useState(true);
   const { completedSessions } = useStudySession();
   const { points, level, streak } = useGamification();
+  const { sessionData } = useStudyData();
 
   // Fetch tasks from database with auto-refresh
   const fetchTasks = useCallback(async () => {
@@ -57,26 +60,18 @@ export default function DashboardPage() {
         return;
       }
 
-      // Progress is automatically fetched by gamification context
-
-      const response = await fetch('/api/user/study-session', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        const formattedTasks = data.sessions.map((session: any, index: number) => ({
-          id: session.sessionId || generateUniqueId('api_session', index),
-          title: session.taskName || 'Study Session',
+      // Use sessionData from the hook instead of making API calls
+      if (sessionData && sessionData.length > 0) {
+        const formattedTasks = sessionData.map((session: StudySessionData, index: number) => ({
+          id: generateUniqueId('api_session', index),
+          title: 'Study Session',
           status: 'Completed' as const,
           date: session.date,
           points: session.points,
         }));
         setTasks(formattedTasks);
       } else {
-        // Fallback to local sessions if API fails
+        // Fallback to local sessions
         const formattedTasks = completedSessions.map((session, index) => ({
           id: session.id || generateUniqueId('local_session', index),
           title: session.taskName,
@@ -102,24 +97,12 @@ export default function DashboardPage() {
     }
   }, [completedSessions]); // Removed fetchLatestProgress to prevent cascade
 
-  // Initial fetch and auto-refresh
+  // Single useEffect to handle all task loading
   useEffect(() => {
     fetchTasks();
-  }, [fetchTasks]);
+  }, [sessionData, completedSessions]); // Only depend on data changes
 
-  // Auto-refresh when new sessions are completed
-  useEffect(() => {
-    fetchTasks();
-  }, [completedSessions.length, fetchTasks]);
-
-  // Periodic refresh every 5 minutes
-  useEffect(() => {
-    const interval = setInterval(() => {
-      fetchTasks();
-    }, 300000); // 5 minutes
-
-    return () => clearInterval(interval);
-  }, [fetchTasks]);
+  // Remove periodic refresh - rely on cache and manual refresh instead
   
   // Memoized calculations
   const sortedTasks = useMemo(() => tasks.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()), [tasks]);

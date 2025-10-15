@@ -54,11 +54,11 @@ export async function POST(request: NextRequest) {
       message: `Successfully generated ${result.flashcards.length} flashcards`,
     }, { status: 201 });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('❌ Generate flashcards API error:', error);
 
     // Handle authentication errors
-    if (error.name === 'JsonWebTokenError') {
+    if (error instanceof Error && error.name === 'JsonWebTokenError') {
       return NextResponse.json(
         { 
           success: false, 
@@ -69,7 +69,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (error.name === 'TokenExpiredError') {
+    if (error instanceof Error && error.name === 'TokenExpiredError') {
       return NextResponse.json(
         { 
           success: false, 
@@ -80,7 +80,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (error.message === 'No token provided') {
+    if (error instanceof Error && error.message === 'No token provided') {
       return NextResponse.json(
         { 
           success: false, 
@@ -92,7 +92,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Handle validation errors
-    if (error.message?.includes('Invalid generation request:')) {
+    if (error instanceof Error && error.message?.includes('Invalid generation request:')) {
       return NextResponse.json(
         { 
           success: false, 
@@ -104,7 +104,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Handle AI generation errors
-    if (error.message?.includes('timeout')) {
+    if (error instanceof Error && error.message?.includes('timeout')) {
       return NextResponse.json(
         { 
           success: false, 
@@ -115,7 +115,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (error.message?.includes('quota') || error.message?.includes('rate limit')) {
+    if (error instanceof Error && (error.message?.includes('quota') || error.message?.includes('rate limit'))) {
       return NextResponse.json(
         { 
           success: false, 
@@ -126,7 +126,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (error.message?.includes('No flashcards') || error.message?.includes('No valid flashcards')) {
+    if (error instanceof Error && (error.message?.includes('No flashcards') || error.message?.includes('No valid flashcards'))) {
       return NextResponse.json(
         { 
           success: false, 
@@ -141,7 +141,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       { 
         success: false, 
-        error: error.message || 'Failed to generate flashcards. Please try again.',
+        error: error instanceof Error ? error.message : 'Failed to generate flashcards. Please try again.',
         code: 'GENERATION_ERROR'
       },
       { status: 500 }

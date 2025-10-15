@@ -1,7 +1,8 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useAuth } from '@/contexts/auth-context';
+import { cachedFetch } from '@/lib/api-cache';
 
 export interface StudySessionData {
   date: string;
@@ -20,17 +21,11 @@ export function useStudyData() {
   const { user } = useAuth();
   const [sessionData, setSessionData] = useState<StudySessionData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [lastFetch, setLastFetch] = useState<number>(0);
+  // Removed lastFetch state as it's no longer needed with caching
 
   const fetchSessionData = useCallback(async (forceRefresh = false) => {
     if (!user) {
       setIsLoading(false);
-      return;
-    }
-
-    // Prevent excessive API calls - only fetch if more than 2 minutes have passed
-    const now = Date.now();
-    if (!forceRefresh && now - lastFetch < 120000 && sessionData.length > 0) {
       return;
     }
 
@@ -42,44 +37,37 @@ export function useStudyData() {
         return;
       }
 
-      const response = await fetch('/api/user/study-session', {
+      const options = {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
-      });
+      };
 
-      if (response.ok) {
-        const data = await response.json();
-        setSessionData(data.sessions || []);
-        setLastFetch(now);
-      } else {
-        // Failed to fetch session data
-        setSessionData([]);
-      }
+      // Use cached fetch with 5-minute TTL, or force refresh
+      const data = forceRefresh 
+        ? await cachedFetch('/api/user/study-session', options, 0) // 0 TTL = no cache
+        : await cachedFetch('/api/user/study-session', options, 5 * 60 * 1000); // 5 minutes
+
+      setSessionData((data as { sessions?: StudySessionData[] }).sessions || []);
     } catch (error) {
       console.error('Failed to fetch session data:', error);
       setSessionData([]);
     } finally {
       setIsLoading(false);
     }
-  }, [user, lastFetch, sessionData.length]);
-
-  // Initial fetch and real-time updates
-  useEffect(() => {
-    fetchSessionData();
   }, [user]);
 
-  // Auto-refresh every 5 minutes (reduced from 30 seconds for better performance)
+  // Initial fetch only when user changes
   useEffect(() => {
-    const interval = setInterval(() => {
+    if (user) {
       fetchSessionData();
-    }, 300000); // 5 minutes instead of 30 seconds
+    }
+  }, [user]); // Depend on user object
 
-    return () => clearInterval(interval);
-  }, [fetchSessionData]);
+  // Remove auto-refresh interval - rely on cache and manual refresh instead
 
-  // Process data for trend visualization
-  const getTrendData = useCallback((days: number = 7): StudyTrendData[] => {
+  // Memoize trend data calculation for performance
+  const getTrendData = useMemo(() => (days: number = 7): StudyTrendData[] => {
     const endDate = new Date();
     const startDate = new Date(endDate.getTime() - (days * 24 * 60 * 60 * 1000));
 
@@ -118,8 +106,8 @@ export function useStudyData() {
     return result;
   }, [sessionData]);
 
-  // Calculate summary statistics
-  const getStats = useCallback(() => {
+  // Memoize stats calculation for performance
+  const getStats = useMemo(() => {
     const totalStudyTime = sessionData.reduce((total, session) => total + session.duration, 0);
     const averageScore = sessionData.length > 0 
       ? sessionData.reduce((total, session) => total + session.score, 0) / sessionData.length 
@@ -143,14 +131,13 @@ export function useStudyData() {
 
   // Validate data consistency
   const validateData = useCallback(() => {
-    const stats = getStats();
     const trendData = getTrendData(7);
     
     // Data validation completed
     
     return {
-      isValid: stats.totalSessions >= 0 && stats.totalStudyTime >= 0,
-      stats,
+      isValid: getStats.totalSessions >= 0 && getStats.totalStudyTime >= 0,
+      stats: getStats,
       trendData,
     };
   }, [getStats, getTrendData]);

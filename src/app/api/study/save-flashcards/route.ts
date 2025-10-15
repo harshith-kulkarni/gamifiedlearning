@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDatabase } from '@/lib/mongodb';
 import { ObjectId } from 'mongodb';
+import { Flashcard } from '@/lib/models/flashcard';
 
 export async function POST(request: NextRequest) {
   try {
@@ -46,14 +47,14 @@ export async function POST(request: NextRequest) {
     const db = await getDatabase();
     
     // Prepare flashcards for saving
-    const flashcardsToSave = flashcards.map((card: any) => ({
+    const flashcardsToSave = flashcards.map((card: Flashcard) => ({
       _id: new ObjectId(),
       id: card.id,
-      question: card.question,
-      answer: card.answer,
+      question: card.front,
+      answer: card.back,
       pageNumber: card.pageNumber,
       sourceText: card.sourceText,
-      status: card.status,
+      status: 'saved',
       taskId,
       pdfTitle,
       userId: token, // Using token as userId for now

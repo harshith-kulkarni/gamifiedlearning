@@ -8,6 +8,7 @@
  */
 
 import {ai} from '@/ai/genkit';
+import { Flashcard } from '@/lib/models/flashcard';
 import {z} from 'zod';
 
 const GenerateFlashcardsInputSchema = z.object({
@@ -117,7 +118,7 @@ const generateFlashcardsFlow = ai.defineFlow(
       }
       
       // Basic validation and enhancement with content truncation
-      const enhancedFlashcards = output.flashcards.map((card: any, index: number) => {
+      const enhancedFlashcards = output.flashcards.map((card: Partial<Flashcard>, index: number) => {
         // Truncate content to meet schema requirements
         const truncateFront = (text: string) => {
           if (!text) return '';

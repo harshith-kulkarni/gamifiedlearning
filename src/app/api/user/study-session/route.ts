@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { AtlasUserService } from '@/lib/services/atlas-user-service';
 import { StudySession } from '@/lib/models/user';
+import { QuizAnswer } from '@/lib/database-utils';
 // @ts-ignore
 import jwt from 'jsonwebtoken';
 
@@ -34,10 +35,10 @@ export async function POST(request: NextRequest) {
       score: Math.max(0, Math.min(100, Math.floor(Number(sessionData.score) || 0))),
       points: Math.max(0, Math.floor(Number(sessionData.points) || 0)),
       completedAt: new Date(),
-      quizAnswers: Array.isArray(sessionData.quizAnswers) ? sessionData.quizAnswers.map((qa: any) => ({
+      quizAnswers: Array.isArray(sessionData.quizAnswers) ? sessionData.quizAnswers.map((qa: QuizAnswer) => ({
         questionIndex: Math.max(0, Math.floor(Number(qa.questionIndex) || 0)),
-        answer: String(qa.answer || ''),
-        correct: Boolean(qa.correct)
+        answer: String(qa.selectedAnswer || ''),
+        correct: Boolean(qa.isCorrect)
       })) : [],
     };
 
@@ -90,28 +91,28 @@ export async function POST(request: NextRequest) {
       success: true,
       session: studySession,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Add study session error:', error);
     
     // Provide more specific error messages
-    if (error.name === 'JsonWebTokenError') {
+    if (error instanceof Error && error.name === 'JsonWebTokenError') {
       return NextResponse.json(
         { error: 'Invalid authentication token' },
         { status: 401 }
       );
-    } else if (error.name === 'TokenExpiredError') {
+    } else if (error instanceof Error && error.name === 'TokenExpiredError') {
       return NextResponse.json(
         { error: 'Authentication token has expired' },
         { status: 401 }
       );
-    } else if (error.message === 'No token provided') {
+    } else if (error instanceof Error && error.message === 'No token provided') {
       return NextResponse.json(
         { error: 'No authentication token provided' },
         { status: 401 }
       );
     } else {
       return NextResponse.json(
-        { error: error.message || 'Failed to save study session' },
+        { error: error instanceof Error ? error.message : 'Failed to save study session' },
         { status: 500 }
       );
     }
@@ -121,33 +122,50 @@ export async function POST(request: NextRequest) {
 export async function GET(request: NextRequest) {
   try {
     const userId = await getUserFromToken(request);
+    
+    // Add performance timing
+    const startTime = Date.now();
     const sessions = await AtlasUserService.getStudySessionsWithTimeData(userId);
+    const endTime = Date.now();
+    
+    // Log slow queries for optimization
+    if (endTime - startTime > 1000) {
+      console.warn(`⚠️ Slow query: getStudySessionsWithTimeData took ${endTime - startTime}ms`);
+    }
 
     return NextResponse.json({
       sessions,
+      _meta: {
+        count: sessions.length,
+        queryTime: endTime - startTime
+      }
+    }, {
+      headers: {
+        'Cache-Control': 'public, max-age=60, stale-while-revalidate=300', // Cache for 1 minute
+      }
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Get study sessions error:', error);
     
     // Provide more specific error messages
-    if (error.name === 'JsonWebTokenError') {
+    if (error instanceof Error && error.name === 'JsonWebTokenError') {
       return NextResponse.json(
         { error: 'Invalid authentication token' },
         { status: 401 }
       );
-    } else if (error.name === 'TokenExpiredError') {
+    } else if (error instanceof Error && error.name === 'TokenExpiredError') {
       return NextResponse.json(
         { error: 'Authentication token has expired' },
         { status: 401 }
       );
-    } else if (error.message === 'No token provided') {
+    } else if (error instanceof Error && error.message === 'No token provided') {
       return NextResponse.json(
         { error: 'No authentication token provided' },
         { status: 401 }
       );
     } else {
       return NextResponse.json(
-        { error: error.message || 'Failed to retrieve study sessions' },
+        { error: error instanceof Error ? error.message : 'Failed to retrieve study sessions' },
         { status: 500 }
       );
     }

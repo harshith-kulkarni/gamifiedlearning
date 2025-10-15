@@ -86,6 +86,9 @@ const generateQuizQuestionsFlow = ai.defineFlow(
   },
   async (input: GenerateQuizQuestionsInput) => {
     const {output} = await prompt(input);
-    return output!;
+    if (!output) {
+      throw new Error('Failed to generate quiz questions');
+    }
+    return output;
   }
 );

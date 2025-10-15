@@ -18,6 +18,7 @@
     "test:install": "node scripts/test-installation.js",
     "clean-install": "node scripts/clean-install.js",
     "verify-setup": "node scripts/verify-setup.js",
+    "test:deployment": "node scripts/test-deployment.js",
     "postinstall": "echo 'Installation complete! Run npm run setup to configure the application.'"
   },
   "dependencies": {
@@ -48,6 +49,7 @@
     "@radix-ui/react-toast": "^1.2.15",
     "@radix-ui/react-tooltip": "^1.2.8",
     "@types/bcryptjs": "^2.4.6",
+    "@vercel/analytics": "^1.5.0",
     "bcryptjs": "^2.4.3",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",

@@ -3,6 +3,7 @@
 import { generateQuizQuestions } from '@/ai/flows/generate-quiz-questions-from-pdf';
 import { analyzeQuizPerformance } from '@/ai/flows/analyze-quiz-performance';
 import { aiChatbotAssistance } from '@/ai/flows/ai-chatbot-assistance';
+import { QuizQuestion, QuizAnswer } from '@/lib/database-utils';
 
 /**
  * Pre-generate quiz questions for a PDF document
@@ -23,14 +24,27 @@ export async function pregenerateQuizQuestions(pdfDataUri: string) {
  */
 export async function preanalyzeQuizPerformance(
   pdfDataUri: string,
-  questions: any[],
-  userAnswers: any[]
+  questions: QuizQuestion[],
+  userAnswers: QuizAnswer[]
 ) {
   try {
+    // Transform questions to match the expected format
+    const transformedQuestions = questions.map(q => ({
+      question: q.question,
+      options: q.options,
+      answer: q.options[q.correctAnswer] || ''
+    }));
+
+    // Transform user answers to match the expected format
+    const transformedAnswers = userAnswers.map(ua => ({
+      questionIndex: ua.questionIndex,
+      answer: questions[ua.questionIndex]?.options[ua.selectedAnswer] || ''
+    }));
+
     const result = await analyzeQuizPerformance({ 
       pdfDataUri, 
-      questions, 
-      userAnswers 
+      questions: transformedQuestions, 
+      userAnswers: transformedAnswers 
     });
     return { success: true, analysis: result };
   } catch {

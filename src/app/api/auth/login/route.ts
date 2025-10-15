@@ -25,7 +25,10 @@ export async function POST(request: NextRequest) {
     const { user, token } = result;
     
     // Get complete user data including progress
-    const completeUser = await AtlasUserService.getUserById(user._id!.toString());
+    if (!user._id) {
+      throw new Error('User ID not found');
+    }
+    const completeUser = await AtlasUserService.getUserById(user._id.toString());
 
     // Set cookie with token (optional, but useful for browser-based auth)
     const response = NextResponse.json({
@@ -43,17 +46,17 @@ export async function POST(request: NextRequest) {
     });
 
     return response;
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Login error:', error);
     
-    if (error.message === 'Invalid email or password') {
+    if (error instanceof Error && error.message === 'Invalid email or password') {
       return NextResponse.json(
         { error: 'Invalid email or password' },
         { status: 401 }
       );
     }
     
-    if (error.message === 'User with this email or username already exists') {
+    if (error instanceof Error && error.message === 'User with this email or username already exists') {
       return NextResponse.json(
         { error: 'User already exists' },
         { status: 409 }

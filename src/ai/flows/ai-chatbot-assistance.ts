@@ -117,6 +117,9 @@ const aiChatbotAssistanceFlow = ai.defineFlow(
   },
   async (input: AiChatbotAssistanceInput) => {
     const {output} = await prompt(input);
-    return output!;
+    if (!output) {
+      throw new Error('Failed to generate AI chatbot response');
+    }
+    return output;
   }
 );

@@ -110,6 +110,9 @@ const analyzeQuizPerformanceFlow = ai.defineFlow(
         questions: JSON.stringify(input.questions, null, 2),
         userAnswers: JSON.stringify(input.userAnswers, null, 2),
     });
-    return output!;
+    if (!output) {
+      throw new Error('Failed to analyze quiz performance');
+    }
+    return output;
   }
 );

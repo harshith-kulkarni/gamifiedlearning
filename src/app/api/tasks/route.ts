@@ -66,7 +66,13 @@ export async function PUT(request: NextRequest) {
     const db = await getDatabase();
     const tasks = db.collection('tasks');
 
-    const updateData: any = {
+    const updateData: {
+      updatedAt: Date;
+      status?: string;
+      studyTime?: number;
+      pointsEarned?: number;
+      completedAt?: Date;
+    } = {
       updatedAt: new Date()
     };
 

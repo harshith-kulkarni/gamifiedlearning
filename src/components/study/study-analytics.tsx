@@ -1,16 +1,65 @@
 'use client';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
 import { useAuth } from '@/contexts/auth-context';
 import { useStudyData } from '@/hooks/use-study-data';
+import { useMemo } from 'react';
+import dynamic from 'next/dynamic';
+
+// Dynamically import charts for better performance
+const LineChart = dynamic(() => import('recharts').then(mod => mod.LineChart), {
+  loading: () => <ChartSkeleton />,
+  ssr: false
+});
+
+const BarChart = dynamic(() => import('recharts').then(mod => mod.BarChart), {
+  loading: () => <ChartSkeleton />,
+  ssr: false
+});
+
+// Import other recharts components normally since they're lightweight
+import { Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Bar } from 'recharts';
+
+// Loading skeleton for charts
+function ChartSkeleton() {
+  return <div className="h-[300px] animate-pulse bg-muted rounded" />;
+}
 
 export function StudyAnalytics() {
   const { user } = useAuth();
   const { sessionData, isLoading, getStats } = useStudyData();
   
-  // Get statistics using the shared hook
-  const stats = getStats();
+  // Get stats (already memoized in the hook)
+  const stats = getStats;
+  
+  // Memoize grouped data calculation
+  const groupedData = useMemo(() => {
+    if (!sessionData || sessionData.length === 0) return [];
+    
+    return sessionData.reduce((acc, session) => {
+      const existingDate = acc.find(item => item.date === session.date);
+      if (existingDate) {
+        existingDate.duration += session.duration;
+        existingDate.points += session.points;
+        existingDate.sessionCount += 1;
+      } else {
+        acc.push({
+          date: session.date,
+          duration: session.duration,
+          points: session.points,
+          score: session.score,
+          sessionCount: 1
+        });
+      }
+      return acc;
+    }, [] as Array<{
+      date: string;
+      duration: number;
+      points: number;
+      score: number;
+      sessionCount: number;
+    }>).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+  }, [sessionData]);
 
   if (isLoading) {
     return (
@@ -36,34 +85,6 @@ export function StudyAnalytics() {
   }
 
   const { totalStudyTime, averageScore, totalPoints, totalSessions } = stats;
-
-  // Group sessions by date for better visualization
-  const groupedData = sessionData.reduce((acc, session) => {
-    const existingDate = acc.find(item => item.date === session.date);
-    if (existingDate) {
-      existingDate.duration += session.duration;
-      existingDate.points += session.points;
-      existingDate.sessionCount += 1;
-    } else {
-      acc.push({
-        date: session.date,
-        duration: session.duration,
-        points: session.points,
-        score: session.score,
-        sessionCount: 1
-      });
-    }
-    return acc;
-  }, [] as Array<{
-    date: string;
-    duration: number;
-    points: number;
-    score: number;
-    sessionCount: number;
-  }>);
-
-  // Sort by date
-  groupedData.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
   return (
     <div className="space-y-6">

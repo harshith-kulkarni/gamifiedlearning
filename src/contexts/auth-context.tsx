@@ -24,6 +24,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const checkAuth = async () => {
       try {
+        // Check if we're in the browser environment
+        if (typeof window === 'undefined') {
+          setIsLoading(false);
+          return;
+        }
+
         const token = localStorage.getItem('auth-token');
         if (token) {
           const response = await fetch('/api/auth/verify', {
@@ -41,7 +47,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       } catch (error) {
         console.error('Auth check failed:', error);
-        localStorage.removeItem('auth-token');
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('auth-token');
+        }
       } finally {
         setIsLoading(false);
       }
@@ -67,7 +75,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (response.ok) {
         setUser(data.user);
-        localStorage.setItem('auth-token', data.token);
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('auth-token', data.token);
+        }
         return true;
       } else {
         setError(data.error || 'Login failed');
@@ -98,7 +108,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (response.ok) {
         setUser(data.user);
-        localStorage.setItem('auth-token', data.token);
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('auth-token', data.token);
+        }
         return true;
       } else {
         setError(data.error || 'Signup failed');
@@ -114,10 +126,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = () => {
     setUser(null);
-    localStorage.removeItem('auth-token');
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('auth-token');
+    }
   };
 
   const getValidToken = () => {
+    if (typeof window === 'undefined') return null;
+    
     const token = localStorage.getItem('auth-token');
     if (token && user) {
       return token;

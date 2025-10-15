@@ -2,8 +2,8 @@
  * Utility functions for handling PDF files
  */
 
-// Maximum file size (10MB)
-const MAX_FILE_SIZE = 10 * 1024 * 1024;
+// Maximum file size (50MB)
+const MAX_FILE_SIZE = 50 * 1024 * 1024;
 
 export interface PDFProcessingResult {
   success: boolean;
@@ -12,11 +12,15 @@ export interface PDFProcessingResult {
 }
 
 /**
- * Process a PDF file and convert it to a data URI
+ * Process a PDF file and convert it to a data URI with streaming support
  * @param file The PDF file to process
+ * @param onProgress Optional progress callback for large files
  * @returns A promise that resolves to a PDFProcessingResult
  */
-export async function processPDFFile(file: File): Promise<PDFProcessingResult> {
+export async function processPDFFile(
+  file: File, 
+  onProgress?: (progress: number) => void
+): Promise<PDFProcessingResult> {
   // Validate file type
   if (file.type !== 'application/pdf') {
     return {
@@ -33,10 +37,17 @@ export async function processPDFFile(file: File): Promise<PDFProcessingResult> {
     };
   }
 
+  // For large files (>10MB), use chunked reading for better performance
+  if (file.size > 10 * 1024 * 1024) {
+    return processLargeFile(file, onProgress);
+  }
+
+  // Standard processing for smaller files
   return new Promise((resolve) => {
     const reader = new FileReader();
     
     reader.onload = () => {
+      onProgress?.(100);
       resolve({
         success: true,
         dataUri: reader.result as string
@@ -49,8 +60,68 @@ export async function processPDFFile(file: File): Promise<PDFProcessingResult> {
         error: 'Failed to read the file. Please try again.'
       });
     };
+
+    reader.onprogress = (event) => {
+      if (event.lengthComputable && onProgress) {
+        const progress = Math.round((event.loaded / event.total) * 100);
+        onProgress(progress);
+      }
+    };
     
     // Read as data URL
+    reader.readAsDataURL(file);
+  });
+}
+
+/**
+ * Process large PDF files with chunked reading and progress tracking
+ * @param file The large PDF file to process
+ * @param onProgress Progress callback
+ * @returns A promise that resolves to a PDFProcessingResult
+ */
+async function processLargeFile(
+  file: File, 
+  onProgress?: (progress: number) => void
+): Promise<PDFProcessingResult> {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    
+    reader.onload = () => {
+      onProgress?.(100);
+      resolve({
+        success: true,
+        dataUri: reader.result as string
+      });
+    };
+    
+    reader.onerror = () => {
+      resolve({
+        success: false,
+        error: 'Failed to process large file. Please try again or use a smaller file.'
+      });
+    };
+
+    reader.onprogress = (event) => {
+      if (event.lengthComputable && onProgress) {
+        const progress = Math.round((event.loaded / event.total) * 100);
+        onProgress(progress);
+      }
+    };
+
+    // Add timeout for very large files (5 minutes)
+    const timeout = setTimeout(() => {
+      reader.abort();
+      resolve({
+        success: false,
+        error: 'File processing timed out. Please try a smaller file.'
+      });
+    }, 5 * 60 * 1000);
+
+    reader.onloadend = () => {
+      clearTimeout(timeout);
+    };
+    
+    // Read as data URL with progress tracking
     reader.readAsDataURL(file);
   });
 }

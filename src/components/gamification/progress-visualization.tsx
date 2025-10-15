@@ -23,7 +23,7 @@ export function ProgressVisualization() {
 
   // Get real study time trend data (last 7 days)
   const studyTrendData = getTrendData(7);
-  const stats = getStats();
+  const stats = getStats;
 
   // Calculate completion rates
   const completedQuests = quests.filter(q => q.completed).length;

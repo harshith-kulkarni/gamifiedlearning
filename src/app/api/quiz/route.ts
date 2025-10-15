@@ -3,6 +3,7 @@ import { getDatabase } from '@/lib/mongodb';
 import { GamificationService } from '@/lib/services/gamification-service';
 import jwt from 'jsonwebtoken';
 import { ObjectId } from 'mongodb';
+import { QuizAnswer } from '@/lib/database-utils';
 
 async function getUserFromToken(request: NextRequest) {
   const authHeader = request.headers.get('authorization');
@@ -72,7 +73,7 @@ export async function PUT(request: NextRequest) {
 
     // Calculate score
     let correctAnswers = 0;
-    const processedAnswers = answers.map((answer: any, index: number) => {
+    const processedAnswers = answers.map((answer: QuizAnswer, index: number) => {
       const isCorrect = answer.selectedAnswer === quiz.questions[index].correctAnswer;
       if (isCorrect) correctAnswers++;
       

@@ -865,7 +865,7 @@ const FlashcardViewerComponent = ({
                             marginTop: cardStyles.spacing 
                           }}
                         >
-                          "                          &quot;{currentCard.sourceText.substring(0, layoutSettings.isCompact ? 150 : 250)}...&quot;"
+                          &quot;{currentCard.sourceText.substring(0, layoutSettings.isCompact ? 150 : 250)}...&quot;
                         </div>
                       )}
                     </div>

@@ -1,8 +1,8 @@
 'use client';
 
 import React from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { AlertTriangle, RefreshCw } from 'lucide-react';
 
 interface ErrorBoundaryState {
@@ -12,7 +12,7 @@ interface ErrorBoundaryState {
 
 interface ErrorBoundaryProps {
   children: React.ReactNode;
-  fallback?: React.ReactNode;
+  fallback?: React.ComponentType<{ error?: Error; resetError: () => void }>;
 }
 
 export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
@@ -29,37 +29,60 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
     console.error('Error caught by boundary:', error, errorInfo);
   }
 
+  resetError = () => {
+    this.setState({ hasError: false, error: undefined });
+  };
+
   render() {
     if (this.state.hasError) {
       if (this.props.fallback) {
-        return this.props.fallback;
+        const FallbackComponent = this.props.fallback;
+        return <FallbackComponent error={this.state.error} resetError={this.resetError} />;
       }
 
-      return (
-        <Card className="w-full max-w-md mx-auto">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-destructive">
-              <AlertTriangle className="h-5 w-5" />
-              Something went wrong
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <p className="text-sm text-muted-foreground">
-              An error occurred while loading this component. Please try refreshing the page.
-            </p>
-            <Button 
-              onClick={() => window.location.reload()} 
-              className="w-full"
-              variant="outline"
-            >
-              <RefreshCw className="h-4 w-4 mr-2" />
-              Refresh Page
-            </Button>
-          </CardContent>
-        </Card>
-      );
+      return <DefaultErrorFallback error={this.state.error} resetError={this.resetError} />;
     }
 
     return this.props.children;
   }
+}
+
+function DefaultErrorFallback({ error, resetError }: { error?: Error; resetError: () => void }) {
+  return (
+    <div className="min-h-screen flex items-center justify-center p-4">
+      <Card className="w-full max-w-md">
+        <CardHeader className="text-center">
+          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-red-100">
+            <AlertTriangle className="h-6 w-6 text-red-600" />
+          </div>
+          <CardTitle>Something went wrong</CardTitle>
+          <CardDescription>
+            We encountered an unexpected error. Please try refreshing the page.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {error && (
+            <div className="rounded-md bg-red-50 p-3">
+              <p className="text-sm text-red-800 font-mono">
+                {error.message}
+              </p>
+            </div>
+          )}
+          <div className="flex gap-2">
+            <Button onClick={resetError} className="flex-1">
+              <RefreshCw className="mr-2 h-4 w-4" />
+              Try Again
+            </Button>
+            <Button 
+              variant="outline" 
+              onClick={() => window.location.href = '/'}
+              className="flex-1"
+            >
+              Go Home
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
 }
